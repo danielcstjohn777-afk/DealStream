@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>DealStream CRM — Texas MF Portfolio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0f14; --bg2: #141720; --bg3: #1c2030; --bg4: #242840;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0; --text2: #8b91a8; --text3: #555d7a;
+    --accent: #4f6ef7; --accent2: #6b85ff;
+    --green: #22c98b; --amber: #f0a832; --red: #e85454; --purple: #9b6cf7; --teal: #2acfe0;
+    --radius: 10px; --radius-sm: 6px;
+    --font: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --sidebar-w: 220px;
+    --topbar-h: 56px;
+    --bottomnav-h: 64px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { height: 100%; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100%; display: flex; overflow-x: hidden; }
+
+  /* ===== SIDEBAR (desktop) ===== */
+  .sidebar {
+    width: var(--sidebar-w); min-height: 100vh;
+    background: var(--bg2); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; padding: 20px 0;
+    flex-shrink: 0; position: fixed; top: 0; left: 0; bottom: 0;
+    z-index: 200; transition: transform 0.25s ease;
+  }
+  .logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .logo-mark { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+  .logo-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .sidebar-close-btn { display: none; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 8px; color: var(--text2); cursor: pointer; font-size: 16px; }
+  .nav { padding: 12px 10px; flex: 1; overflow-y: auto; }
+  .nav-label { font-size: 10px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; padding: 0 8px; margin-bottom: 6px; margin-top: 14px; }
+  .nav-label:first-child { margin-top: 0; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; color: var(--text2); transition: all 0.15s; margin-bottom: 2px; }
+  .nav-item:hover, .nav-item:active { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: rgba(79,110,247,0.15); color: var(--accent2); }
+  .nav-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+  .nav-badge { margin-left: auto; background: var(--bg4); color: var(--text2); font-size: 10px; padding: 2px 6px; border-radius: 20px; }
+  .sidebar-footer { padding: 14px 20px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text3); }
+
+  /* ===== MAIN ===== */
+  .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; min-width: 0; display: flex; flex-direction: column; }
+
+  /* ===== TOPBAR ===== */
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 0 20px; height: var(--topbar-h); border-bottom: 1px solid var(--border); background: var(--bg2); position: sticky; top: 0; z-index: 50; flex-shrink: 0; }
+  .menu-btn { display: none; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 6px 10px; color: var(--text2); cursor: pointer; font-size: 16px; flex-shrink: 0; }
+  .page-title { font-size: 15px; font-weight: 600; color: var(--text); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .search-box { background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 7px 12px; font-size: 13px; color: var(--text); width: 200px; outline: none; flex-shrink: 0; }
+  .search-box::placeholder { color: var(--text3); }
+  .topbar-analyze-btn { background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 7px 12px; font-size: 13px; cursor: pointer; white-space: nowrap; font-family: var(--font); flex-shrink: 0; }
+
+  /* ===== CONTENT ===== */
+  .content { padding: 20px; flex: 1; overflow-y: auto; }
+
+  /* ===== BOTTOM NAV (mobile) ===== */
+  .bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottomnav-h); background: var(--bg2); border-top: 1px solid var(--border); z-index: 200; flex-direction: row; align-items: stretch; justify-content: space-around; padding: 0 4px; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .bnav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; border: none; background: transparent; color: var(--text3); font-family: var(--font); padding: 8px 2px; transition: color 0.15s; }
+  .bnav-item.active { color: var(--accent2); }
+  .bnav-icon { font-size: 18px; line-height: 1; }
+  .bnav-label { font-size: 10px; font-weight: 500; }
+
+  /* ===== OVERLAY ===== */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 199; }
+  .overlay.show { display: block; }
+
+  /* ===== CARDS ===== */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .card-sm { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+
+  /* ===== STAT GRID ===== */
+  .stat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .stat-value { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+  .stat-sub { font-size: 11px; color: var(--text2); margin-top: 3px; }
+  .stat-up { color: var(--green); } .stat-down { color: var(--red); }
+
+  /* ===== TABLE ===== */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius-sm); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { padding: 10px 12px; text-align: left; font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); background: var(--bg3); white-space: nowrap; cursor: pointer; user-select: none; }
+  tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+  tbody tr:hover, tbody tr:active { background: var(--bg3); }
+  tbody td { padding: 11px 12px; vertical-align: middle; white-space: nowrap; }
+  .td-addr { font-weight: 500; color: var(--text); }
+
+  /* ===== PROPERTY CARDS (mobile list) ===== */
+  .prop-card-list { display: none; }
+  .prop-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s; }
+  .prop-card:active { border-color: var(--accent); }
+  .prop-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .prop-card-addr { font-size: 14px; font-weight: 600; color: var(--text); }
+  .prop-card-city { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .prop-card-row { display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px; }
+  .prop-card-key { color: var(--text3); }
+  .prop-card-val { color: var(--text); font-weight: 500; }
+
+  /* ===== BADGES ===== */
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .badge-green { background: rgba(34,201,139,0.15); color: var(--green); }
+  .badge-red { background: rgba(232,84,84,0.15); color: var(--red); }
+  .badge-amber { background: rgba(240,168,50,0.15); color: var(--amber); }
+  .badge-blue { background: rgba(79,110,247,0.15); color: var(--accent2); }
+  .badge-gray { background: rgba(139,145,168,0.12); color: var(--text2); }
+
+  /* ===== GRIDS ===== */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
+
+  /* ===== SECTION ===== */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ===== DETAIL PANEL ===== */
+  .detail-panel { position: fixed; right: 0; top: 0; bottom: 0; width: 480px; max-width: 100vw; background: var(--bg2); border-left: 1px solid var(--border); z-index: 300; transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; overflow: hidden; }
+  .detail-panel.open { transform: translateX(0); }
+  .panel-header { padding: 16px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0; padding-top: max(16px, env(safe-area-inset-top, 16px)); }
+  .panel-close { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; cursor: pointer; color: var(--text2); font-size: 18px; min-width: 40px; text-align: center; }
+  .panel-body { flex: 1; overflow-y: auto; padding: 16px 18px; padding-bottom: 24px; -webkit-overflow-scrolling: touch; }
+  .panel-title { font-size: 16px; font-weight: 600; color: var(--text); }
+  .panel-sub { font-size: 13px; color: var(--text2); margin-top: 3px; }
+
+  /* ===== FORM ===== */
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 11px; color: var(--text3); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .field input, .field select, .field textarea { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 16px; color: var(--text); outline: none; font-family: var(--font); -webkit-appearance: none; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+  .field textarea { resize: vertical; min-height: 70px; font-size: 14px; }
+
+  /* ===== INFO ROWS ===== */
+  .info-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; gap: 8px; }
+  .info-key { color: var(--text2); flex-shrink: 0; }
+  .info-val { color: var(--text); font-weight: 500; text-align: right; word-break: break-word; }
+
+  .sec-header { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; margin-top: 4px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+  /* ===== PIPELINE ===== */
+  .pipeline { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; -webkit-overflow-scrolling: touch; }
+  .stage { min-width: 210px; max-width: 210px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); flex-shrink: 0; }
+  .stage-header { padding: 10px 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .stage-name { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
+  .stage-count { font-size: 11px; color: var(--text3); background: var(--bg3); padding: 2px 7px; border-radius: 20px; }
+  .stage-body { padding: 8px; min-height: 160px; }
+  .deal-card { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 7px; cursor: pointer; transition: border-color 0.15s; }
+  .deal-card:active { border-color: var(--accent); }
+  .deal-addr { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .deal-meta { font-size: 11px; color: var(--text3); }
+  .deal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }
+
+  /* ===== CHART ===== */
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* ===== ACTIVITY ===== */
+  .activity-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .activity-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .activity-content { flex: 1; min-width: 0; }
+  .activity-title { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .activity-time { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* ===== CASH FLOW ===== */
+  .cf-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .cf-label { color: var(--text2); } .cf-val { font-weight: 500; }
+  .cf-val.pos { color: var(--green); } .cf-val.neg { color: var(--red); }
+  .cf-total { background: var(--bg4); border-radius: var(--radius-sm); padding: 12px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .cf-total-label { font-size: 13px; color: var(--text2); }
+  .cf-total-val { font-size: 20px; font-weight: 700; }
+
+  /* ===== FILTER BAR ===== */
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .filter-select { background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13px; color: var(--text2); outline: none; font-family: var(--font); -webkit-appearance: none; }
+
+  /* ===== CONTACT CHIPS ===== */
+  .contact-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--bg4); border-radius: var(--radius-sm); padding: 6px 10px; font-size: 12px; color: var(--text2); margin: 3px; }
+  .dnc { color: var(--red); font-size: 10px; }
+
+  /* ===== AI BOX ===== */
+  .ai-box { background: var(--bg3); border: 1px solid rgba(79,110,247,0.3); border-radius: var(--radius); padding: 14px; margin-top: 14px; font-size: 13px; line-height: 1.7; color: var(--text2); }
+  .ai-thinking { color: var(--text3); font-style: italic; }
+  .thinking-dots::after { content: '...'; animation: dots 1.2s infinite; }
+  @keyframes dots { 0%,100%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+
+  /* ===== MISC ===== */
+  .score-bar { height: 4px; border-radius: 2px; background: var(--bg4); overflow: hidden; margin-top: 5px; }
+  .score-fill { height: 100%; border-radius: 2px; }
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--text3); font-size: 14px; }
+  .btn { padding: 10px 16px; border-radius: var(--radius-sm); font-size: 14px; cursor: pointer; border: none; font-family: var(--font); transition: opacity 0.15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-ghost { background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); }
+  .btn-green { background: var(--green); color: #fff; border: none; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+  /* ===== SMS MODAL ===== */
+  .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500; align-items: center; justify-content: center; padding: 16px; }
+  .modal-backdrop.show { display: flex; }
+  .modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius); width: 100%; max-width: 560px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+  .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+  .modal-title { font-size: 15px; font-weight: 600; }
+  .modal-close { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 10px; cursor: pointer; color: var(--text2); font-size: 16px; }
+  .modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; }
+  .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-shrink: 0; }
+
+  /* SMS thread bubble styles */
+  .sms-thread { background: var(--bg3); border-radius: var(--radius); padding: 14px; max-height: 260px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .bubble { max-width: 78%; padding: 9px 13px; border-radius: 16px; font-size: 13px; line-height: 1.5; word-break: break-word; }
+  .bubble-out { background: var(--accent); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .bubble-in { background: var(--bg4); color: var(--text); align-self: flex-start; border-bottom-left-radius: 4px; }
+  .bubble-time { font-size: 10px; opacity: 0.6; margin-top: 3px; }
+  .bubble-meta { font-size: 10px; color: var(--text3); text-align: center; margin: 4px 0; }
+
+  /* Template pills */
+  .tpl-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .tpl-pill { padding: 5px 11px; border-radius: 20px; font-size: 12px; background: var(--bg4); color: var(--text2); cursor: pointer; border: 1px solid var(--border); transition: all 0.15s; }
+  .tpl-pill:hover, .tpl-pill.active { background: rgba(79,110,247,0.2); color: var(--accent2); border-color: var(--accent); }
+
+  /* Texting page */
+  .contact-list { display: flex; flex-direction: column; gap: 1px; }
+  .contact-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+  .contact-row:hover, .contact-row:active { background: var(--bg3); }
+  .contact-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--bg4); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; color: var(--accent2); flex-shrink: 0; }
+  .contact-info { flex: 1; min-width: 0; }
+  .contact-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .contact-preview { font-size: 12px; color: var(--text3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .contact-meta { text-align: right; flex-shrink: 0; }
+  .contact-time { font-size: 11px; color: var(--text3); }
+  .unread-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; margin: 4px auto 0; }
+
+  /* Log badge */
+  .log-item { display: flex; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; align-items: flex-start; }
+  .log-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .log-text { flex: 1; color: var(--text2); line-height: 1.5; }
+  .log-time { color: var(--text3); flex-shrink: 0; white-space: nowrap; }
+
+  @media (max-width: 600px) {
+    .modal { max-height: 95vh; border-radius: var(--radius) var(--radius) 0 0; align-self: flex-end; }
+    .modal-backdrop { align-items: flex-end; padding: 0; }
+  }
+
+  /* ===== SMS / TEXTING ===== */
+  .sms-modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:600; align-items:center; justify-content:center; padding:16px; }
+  .sms-modal-backdrop.show { display:flex; }
+  .sms-modal { background:var(--bg2); border:1px solid var(--border2); border-radius:var(--radius); width:100%; max-width:540px; max-height:88vh; display:flex; flex-direction:column; overflow:hidden; }
+  .sms-modal-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+  .sms-modal-title { font-size:15px; font-weight:600; }
+  .sms-modal-sub { font-size:12px; color:var(--text3); margin-top:2px; }
+  .sms-modal-close { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 11px; cursor:pointer; color:var(--text2); font-size:16px; }
+  .sms-thread { background:var(--bg3); border-radius:var(--radius); padding:12px; flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; min-height:160px; max-height:280px; }
+  .bubble-out { background:var(--accent); color:#fff; align-self:flex-end; border-radius:16px 16px 4px 16px; padding:9px 13px; max-width:80%; font-size:13px; line-height:1.5; word-break:break-word; }
+  .bubble-in  { background:var(--bg4); color:var(--text); align-self:flex-start; border-radius:16px 16px 16px 4px; padding:9px 13px; max-width:80%; font-size:13px; line-height:1.5; }
+  .bubble-time { font-size:10px; opacity:0.55; margin-top:3px; display:block; }
+  .bubble-status { font-size:10px; color:var(--text3); text-align:center; padding:4px 0; }
+  .sms-modal-body { padding:14px 18px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
+  .tpl-row { display:flex; flex-wrap:wrap; gap:6px; }
+  .tpl-pill { padding:5px 12px; border-radius:20px; font-size:12px; background:var(--bg4); color:var(--text2); cursor:pointer; border:1px solid var(--border); transition:all .15s; white-space:nowrap; }
+  .tpl-pill:hover,.tpl-pill.sel { background:rgba(79,110,247,.2); color:var(--accent2); border-color:var(--accent); }
+  .sms-compose { display:flex; gap:8px; align-items:flex-end; padding:12px 18px; border-top:1px solid var(--border); flex-shrink:0; }
+  .sms-textarea { flex:1; background:var(--bg3); border:1px solid var(--border2); border-radius:var(--radius-sm); padding:10px 12px; font-size:14px; color:var(--text); resize:none; font-family:var(--font); outline:none; min-height:64px; max-height:160px; }
+  .sms-textarea:focus { border-color:var(--accent); }
+  .sms-send-btn { background:var(--green); color:#fff; border:none; border-radius:var(--radius-sm); padding:10px 16px; font-size:14px; cursor:pointer; font-family:var(--font); white-space:nowrap; flex-shrink:0; display:flex; align-items:center; gap:6px; }
+  .sms-send-btn:active { opacity:.8; }
+  .char-count { font-size:11px; color:var(--text3); text-align:right; }
+
+  /* Texts page */
+  .texts-layout { display:grid; grid-template-columns:280px 1fr; gap:0; min-height:calc(100vh - 120px); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; background:var(--bg2); }
+  .texts-sidebar { border-right:1px solid var(--border); display:flex; flex-direction:column; }
+  .texts-sidebar-header { padding:12px 14px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .texts-sidebar-title { font-size:13px; font-weight:600; }
+  .thread-list { flex:1; overflow-y:auto; }
+  .thread-item { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; }
+  .thread-item:hover,.thread-item.active { background:var(--bg3); }
+  .thread-avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--purple)); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:#fff; flex-shrink:0; }
+  .thread-info { flex:1; min-width:0; }
+  .thread-name { font-size:13px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .thread-preview { font-size:11px; color:var(--text3); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .thread-time { font-size:10px; color:var(--text3); flex-shrink:0; }
+  .thread-unread { width:8px; height:8px; background:var(--accent); border-radius:50%; flex-shrink:0; }
+  .texts-main { display:flex; flex-direction:column; }
+  .texts-chat-header { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-shrink:0; }
+  .texts-chat-name { font-size:14px; font-weight:600; }
+  .texts-chat-sub { font-size:11px; color:var(--text3); }
+  .texts-chat-body { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; background:var(--bg); }
+  .texts-empty { display:flex; align-items:center; justify-content:center; flex:1; color:var(--text3); font-size:14px; flex-direction:column; gap:8px; }
+  .texts-compose-bar { padding:12px 16px; border-top:1px solid var(--border); display:flex; gap:8px; align-items:flex-end; background:var(--bg2); flex-shrink:0; }
+  .texts-input { flex:1; background:var(--bg3); border:1px solid var(--border2); border-radius:20px; padding:10px 16px; font-size:14px; color:var(--text); resize:none; font-family:var(--font); outline:none; min-height:42px; max-height:120px; }
+  .texts-input:focus { border-color:var(--accent); }
+  .texts-send { background:var(--accent); color:#fff; border:none; border-radius:50%; width:42px; height:42px; font-size:18px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .texts-ai-btn { background:var(--bg3); color:var(--purple); border:1px solid var(--border2); border-radius:50%; width:42px; height:42px; font-size:14px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+
+  @media (max-width: 700px) {
+    .texts-layout { grid-template-columns:1fr; min-height:auto; }
+    .texts-sidebar { display:none; }
+    .texts-sidebar.show { display:flex; }
+    .sms-modal-backdrop { align-items:flex-end; padding:0; }
+    .sms-modal { max-height:95vh; border-radius:var(--radius) var(--radius) 0 0; }
+  }
+
+  /* GV send steps */
+  .gv-step { display:flex; align-items:flex-start; gap:10px; }
+  .gv-step-num { width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+  .gv-step-num.done { background:var(--green); }
+  .gv-copied { background:var(--green) !important; transition:background .2s; }
+
+  /* Queue */
+  .queue-item { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); }
+  .queue-item:last-child { border-bottom:none; }
+  .queue-check { width:20px; height:20px; border-radius:50%; border:2px solid var(--border2); cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; transition:all .15s; }
+  .queue-check.sent { background:var(--green); border-color:var(--green); color:#fff; }
+  .queue-info { flex:1; min-width:0; }
+  .queue-name { font-size:13px; font-weight:500; color:var(--text); }
+  .queue-phone { font-size:11px; color:var(--text3); margin-top:1px; }
+  .queue-preview { font-size:11px; color:var(--text2); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .queue-actions { display:flex; gap:6px; flex-shrink:0; }
+  .queue-btn { padding:5px 10px; border-radius:var(--radius-sm); font-size:11px; cursor:pointer; border:1px solid var(--border2); background:var(--bg4); color:var(--text2); font-family:var(--font); white-space:nowrap; }
+  .queue-btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .queue-btn.green { background:var(--green); color:#fff; border-color:var(--green); }
+
+  /* ===== IMPORT MODAL ===== */
+  .import-modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:700; align-items:center; justify-content:center; padding:16px; }
+  .import-modal-backdrop.show { display:flex; }
+  .import-modal { background:var(--bg2); border:1px solid var(--border2); border-radius:var(--radius); width:100%; max-width:580px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; }
+  .import-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+  .import-title { font-size:15px; font-weight:600; }
+  .import-close { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 11px; cursor:pointer; color:var(--text2); font-size:16px; }
+  .import-body { padding:20px; overflow-y:auto; flex:1; }
+  .drop-zone { border:2px dashed var(--border2); border-radius:var(--radius); padding:40px 20px; text-align:center; cursor:pointer; transition:all .2s; }
+  .drop-zone:hover, .drop-zone.drag-over { border-color:var(--accent); background:rgba(79,110,247,.06); }
+  .drop-zone-icon { font-size:40px; margin-bottom:12px; }
+  .drop-zone-title { font-size:15px; font-weight:600; color:var(--text); margin-bottom:6px; }
+  .drop-zone-sub { font-size:13px; color:var(--text3); }
+  .import-progress { margin-top:16px; display:none; }
+  .import-progress-bar { height:6px; background:var(--bg4); border-radius:3px; overflow:hidden; margin:8px 0; }
+  .import-progress-fill { height:100%; background:var(--accent); border-radius:3px; transition:width .3s; }
+  .import-log { background:var(--bg3); border-radius:var(--radius-sm); padding:12px; font-size:12px; color:var(--text2); max-height:200px; overflow-y:auto; margin-top:12px; line-height:1.8; }
+  .import-footer { padding:14px 20px; border-top:1px solid var(--border); display:flex; gap:8px; flex-shrink:0; }
+  .import-result { background:var(--bg3); border-radius:var(--radius-sm); padding:14px; margin-top:14px; display:none; }
+  .import-result-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:10px; }
+  .import-result-stat { text-align:center; }
+  .import-result-num { font-size:22px; font-weight:700; color:var(--text); }
+  .import-result-lbl { font-size:11px; color:var(--text3); margin-top:2px; }
+  @media (max-width:600px) {
+    .import-modal-backdrop { align-items:flex-end; padding:0; }
+    .import-modal { max-height:95vh; border-radius:var(--radius) var(--radius) 0 0; }
+    .import-result-grid { grid-template-columns:repeat(2,1fr); }
+  }
+
+  /* ===== RESPONSIVE BREAKPOINTS ===== */
+
+  @media (max-width: 1100px) {
+    .stat-grid { grid-template-columns: repeat(3, 1fr); }
+    .grid-2-1 { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 900px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+    :root { --sidebar-w: 0px; }
+    .sidebar { transform: translateX(-220px); width: 220px; }
+    .sidebar.mobile-open { transform: translateX(0); }
+    .sidebar-close-btn { display: flex; }
+    .menu-btn { display: flex; align-items: center; }
+    .main { margin-left: 0; padding-bottom: var(--bottomnav-h); }
+    .bottom-nav { display: flex; }
+    .search-box { width: 140px; }
+    .topbar-analyze-btn { display: none; }
+    .content { padding: 14px; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stat-value { font-size: 20px; }
+    .detail-panel { width: 100%; border-left: none; }
+  }
+
+  @media (max-width: 600px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .grid-3 { grid-template-columns: 1fr; }
+    .field-row { grid-template-columns: 1fr; }
+    .search-box { width: 120px; font-size: 14px; }
+    .table-wrap table { display: none; }
+    .prop-card-list { display: block; }
+    .cf-table-wrap table { display: none; }
+    .cf-card-list { display: block; }
+    .contacts-table-wrap table { display: none; }
+    .contacts-card-list { display: block; }
+  }
+
+  @media (max-width: 400px) {
+    .search-box { display: none; }
+    .page-title { font-size: 14px; }
+  }
+
+  /* Analyzer layout: stack on mobile */
+  @media (max-width: 900px) {
+    #az-layout { display: block !important; }
+    #az-layout > div { margin-bottom: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <div class="logo">
+    <div>
+      <div class="logo-mark">DealStream</div>
+      <div class="logo-sub">TX Multifamily CRM</div>
+    </div>
+    <button class="sidebar-close-btn" onclick="closeSidebar()">✕</button>
+  </div>
+  <div class="nav">
+    <div class="nav-label">Overview</div>
+    <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">⬡</span> Dashboard</div>
+    <div class="nav-label">Deal Flow</div>
+    <div class="nav-item" onclick="showPage('properties')"><span class="nav-icon">⊞</span> Properties <span class="nav-badge" id="prop-badge">41</span></div>
+    <div class="nav-item" onclick="showPage('pipeline')"><span class="nav-icon">⇢</span> Pipeline</div>
+    <div class="nav-item" onclick="showPage('analyzer')"><span class="nav-icon">◈</span> Deal Analyzer</div>
+    <div class="nav-label">Finance</div>
+    <div class="nav-item" onclick="showPage('cashflow')"><span class="nav-icon">$</span> Cash Flow</div>
+    <div class="nav-label">Contacts</div>
+    <div class="nav-item" onclick="showPage('texts')"><span class="nav-icon">💬</span> Texts <span class="nav-badge" id="texts-badge">0</span></div>
+    <div class="nav-item" onclick="showPage('contacts')"><span class="nav-icon">◎</span> Owner CRM <span class="nav-badge" id="owner-badge">—</span></div>
+  </div>
+  <div class="sidebar-footer">
+    <div id="sf-county">Comal County · TX</div>
+    <div id="sf-count" style="color:var(--text3)">41 tracked properties</div>
+    <button onclick="openImportModal()" style="margin-top:10px;width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px;font-size:12px;color:var(--text2);cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:6px;">⬆ Import Sheet</button>
+  </div>
+</nav>
+
+<!-- Mobile overlay for sidebar -->
+<div class="overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- Panel overlay -->
+<div class="overlay" id="panel-overlay" onclick="closePanel()"></div>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <button class="menu-btn" onclick="openSidebar()">☰</button>
+    <div class="page-title" id="page-title">Dashboard</div>
+    <input class="search-box" placeholder="Search…" id="global-search" oninput="handleSearch(this.value)">
+    <button class="topbar-analyze-btn" onclick="openImportModal()" style="background:var(--bg3);color:var(--text2);border:1px solid var(--border2);">⬆ Import</button>
+    <button class="topbar-analyze-btn" onclick="showPage('analyzer')">+ Analyze</button>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="section active">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Properties</div><div class="stat-value">41</div><div class="stat-sub">Comal County</div></div>
+        <div class="stat-card"><div class="stat-label">Portfolio Value</div><div class="stat-value" id="stat-val">—</div><div class="stat-sub">Est. market</div></div>
+        <div class="stat-card"><div class="stat-label">Open Loans</div><div class="stat-value" id="stat-loans">—</div><div class="stat-sub stat-down" id="stat-loan-bal">Outstanding</div></div>
+        <div class="stat-card"><div class="stat-label">Free & Clear</div><div class="stat-value stat-up" id="stat-free">—</div><div class="stat-sub">No mortgage</div></div>
+        <div class="stat-card"><div class="stat-label">High Equity</div><div class="stat-value stat-up" id="stat-highequity">—</div><div class="stat-sub">&gt;$500K eq.</div></div>
+      </div>
+
+      <div class="grid-2-1" style="margin-bottom:16px;">
+        <div class="card"><div class="sec-header">Portfolio by City</div><div class="chart-wrap" style="height:220px"><canvas id="cityChart"></canvas></div></div>
+        <div class="card"><div class="sec-header">Equity Segments</div><div class="chart-wrap" style="height:220px"><canvas id="equityPieChart"></canvas></div></div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:16px;">
+        <div class="card"><div class="sec-header">Year Built</div><div class="chart-wrap" style="height:180px"><canvas id="yearChart"></canvas></div></div>
+        <div class="card"><div class="sec-header">Top Equity Targets (Free & Clear)</div><div id="top-targets"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="sec-header">All Properties — Quick View</div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Address</th><th>City</th><th>Owner</th><th>Est. Value</th><th>Equity</th><th>Loans</th><th>Status</th></tr></thead>
+          <tbody id="recent-table"></tbody></table>
+        </div>
+        <!-- Mobile cards for dashboard -->
+        <div class="prop-card-list" id="dashboard-cards"></div>
+      </div>
+    </div>
+
+    <!-- PROPERTIES -->
+    <div id="page-properties" class="section">
+      <div class="filter-bar">
+        <select class="filter-select" id="filter-city" onchange="applyFilters()">
+          <option value="">All Cities</option><option>Canyon Lake</option><option>New Braunfels</option><option>Spring Branch</option>
+        </select>
+        <select class="filter-select" id="filter-equity" onchange="applyFilters()">
+          <option value="">All Equity</option><option value="free">Free & Clear</option><option value="high">High ($500K+)</option><option value="low">Underwater</option>
+        </select>
+        <select class="filter-select" id="filter-loan" onchange="applyFilters()">
+          <option value="">All Loans</option><option value="yes">Has Loan</option><option value="no">No Loans</option>
+        </select>
+        <select class="filter-select" id="filter-stage" onchange="applyFilters()">
+          <option value="">All Stages</option><option>New Lead</option><option>Contacted</option><option>Interested</option><option>Under Analysis</option><option>Offer Sent</option><option>Closed</option><option>Dead</option>
+        </select>
+        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px;" onclick="clearFilters()">Clear</button>
+        <span id="filter-count" style="font-size:12px;color:var(--text3);"></span>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table><thead><tr>
+            <th onclick="sortTable('Address')">Address</th><th onclick="sortTable('City')">City</th>
+            <th onclick="sortTable('Owner 1 Last Name')">Owner</th><th onclick="sortTable('Building Sqft')">Sqft</th>
+            <th onclick="sortTable('Year Built')">Year</th><th onclick="sortTable('Est. Value')">Value</th>
+            <th onclick="sortTable('Est. Equity')">Equity</th><th onclick="sortTable('Loan 1 Balance')">Loan</th>
+            <th>Stage</th><th>Score</th>
+          </tr></thead><tbody id="prop-table"></tbody></table>
+        </div>
+        <div class="prop-card-list" id="prop-cards"></div>
+      </div>
+    </div>
+
+    <!-- PIPELINE -->
+    <div id="page-pipeline" class="section">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Tap a card to view details & update stage.</p>
+      <div class="pipeline" id="pipeline-board"></div>
+    </div>
+
+    <!-- ANALYZER -->
+    <div id="page-analyzer" class="section">
+      <div id="az-layout" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="sec-header">Property Selection</div>
+            <div class="field">
+              <label>Pick from portfolio</label>
+              <select id="az-prop-select" onchange="loadPropForAnalysis(this.value)" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;font-size:16px;color:var(--text);outline:none;font-family:var(--font);-webkit-appearance:none;">
+                <option value="">— Custom deal —</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Address</label><input id="az-addr" type="text" placeholder="123 Main St"></div>
+              <div class="field"><label>City</label><input id="az-city" type="text" placeholder="New Braunfels"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Purchase Price ($)</label><input id="az-price" type="number" value="1200000" inputmode="numeric"></div>
+              <div class="field"><label>ARV ($)</label><input id="az-arv" type="number" value="1400000" inputmode="numeric"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Building Sqft</label><input id="az-sqft" type="number" value="20000" inputmode="numeric"></div>
+              <div class="field"><label>Year Built</label><input id="az-year" type="number" value="1990" inputmode="numeric"></div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="sec-header">Income</div>
+            <div class="field-row">
+              <div class="field"><label>Gross Rent/Mo ($)</label><input id="az-rent" type="number" value="12000" inputmode="numeric" oninput="calcDeal()"></div>
+              <div class="field"><label>Vacancy (%)</label><input id="az-vac" type="number" value="7" step="0.5" inputmode="decimal" oninput="calcDeal()"></div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="sec-header">Expenses (Monthly)</div>
+            <div class="field-row">
+              <div class="field"><label>Taxes ($)</label><input id="az-tax" type="number" value="1200" inputmode="numeric" oninput="calcDeal()"></div>
+              <div class="field"><label>Insurance ($)</label><input id="az-ins" type="number" value="400" inputmode="numeric" oninput="calcDeal()"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Mgmt (%)</label><input id="az-mgmt" type="number" value="8" step="0.5" inputmode="decimal" oninput="calcDeal()"></div>
+              <div class="field"><label>Maintenance ($)</label><input id="az-maint" type="number" value="500" inputmode="numeric" oninput="calcDeal()"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>CapEx ($)</label><input id="az-capex" type="number" value="400" inputmode="numeric" oninput="calcDeal()"></div>
+              <div class="field"><label>Other ($)</label><input id="az-other" type="number" value="150" inputmode="numeric" oninput="calcDeal()"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="sec-header">Financing</div>
+            <div class="field">
+              <label>Strategy</label>
+              <select id="az-strat" onchange="calcDeal()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;font-size:16px;color:var(--text);outline:none;font-family:var(--font);-webkit-appearance:none;">
+                <option value="seller">Seller Financing</option><option value="subto">Subject-To</option><option value="conv">Conventional</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Down Payment ($)</label><input id="az-down" type="number" value="120000" inputmode="numeric" oninput="calcDeal()"></div>
+              <div class="field"><label>Interest Rate (%)</label><input id="az-rate" type="number" value="6.5" step="0.25" inputmode="decimal" oninput="calcDeal()"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Amortization (yrs)</label><input id="az-amort" type="number" value="30" inputmode="numeric" oninput="calcDeal()"></div>
+              <div class="field"><label>Closing + Rehab ($)</label><input id="az-closing" type="number" value="25000" inputmode="numeric" oninput="calcDeal()"></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:14px;" id="az-results">
+            <div class="sec-header">Results</div>
+            <div id="az-verdict" style="margin-bottom:12px;"></div>
+            <div id="az-metrics" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;"></div>
+            <div id="az-cashflow"></div>
+          </div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="sec-header">Cash Flow Projection (10 Yr)</div>
+            <div class="chart-wrap" style="height:180px"><canvas id="azProjectionChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="sec-header">AI Underwriting Memo</div>
+            <button class="btn btn-primary" style="width:100%;margin-bottom:10px;" onclick="runAIMemo()">Generate AI memo ↗</button>
+            <div id="az-ai-output"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CASH FLOW -->
+    <div id="page-cashflow" class="section">
+      <div class="grid-2" style="margin-bottom:16px;">
+        <div class="card">
+          <div class="sec-header">Portfolio Model Inputs</div>
+          <div class="field-row">
+            <div class="field"><label>Rent/Sqft ($/mo)</label><input type="number" id="cf-rentsf" value="1.10" step="0.05" inputmode="decimal" oninput="renderCashflow()"></div>
+            <div class="field"><label>Vacancy (%)</label><input type="number" id="cf-vacancy" value="7" step="0.5" inputmode="decimal" oninput="renderCashflow()"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Avg Rate (%)</label><input type="number" id="cf-rate" value="6.5" step="0.25" inputmode="decimal" oninput="renderCashflow()"></div>
+            <div class="field"><label>Expense Ratio (%)</label><input type="number" id="cf-expratio" value="45" inputmode="numeric" oninput="renderCashflow()"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Appreciation (%/yr)</label><input type="number" id="cf-appre" value="4" step="0.5" inputmode="decimal" oninput="renderCashflow()"></div>
+          </div>
+        </div>
+        <div class="card"><div class="sec-header">Portfolio Estimates</div><div id="cf-portfolio-stats"></div></div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="sec-header">5-Year Projection</div>
+        <div class="chart-wrap" style="height:240px"><canvas id="cfProjectionChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="sec-header">Property-Level Cash Flow</div>
+        <div class="cf-table-wrap table-wrap">
+          <table><thead><tr><th>Address</th><th>City</th><th>Sqft</th><th>Est. Rent</th><th>EGI</th><th>Expenses</th><th>NOI</th><th>Debt Svc</th><th>Cash Flow</th><th>Cap Rate</th></tr></thead>
+          <tbody id="cf-table"></tbody></table>
+        </div>
+        <div class="cf-card-list" id="cf-cards" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- CONTACTS -->
+    <div id="page-contacts" class="section">
+      <div class="filter-bar">
+        <select class="filter-select" id="ctct-city" onchange="renderContacts()"><option value="">All Cities</option><option>Canyon Lake</option><option>New Braunfels</option><option>Spring Branch</option></select>
+        <select class="filter-select" id="ctct-dnc" onchange="renderContacts()"><option value="">All DNC</option><option value="dnc">Has DNC</option><option value="clean">All Clean</option></select>
+        <input class="filter-select" placeholder="Search owners…" id="ctct-search" oninput="renderContacts()" style="width:150px;">
+      </div>
+      <div class="card">
+        <div class="contacts-table-wrap table-wrap">
+          <table><thead><tr><th>Owner</th><th>Address</th><th>City</th><th>Mailing</th><th>Phones</th><th>Emails</th><th>Stage</th></tr></thead>
+          <tbody id="contacts-table"></tbody></table>
+        </div>
+        <div class="contacts-card-list" id="contacts-cards" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- TEXTS -->
+    <div id="page-texts" class="section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-size:15px;font-weight:600;">Google Voice Outreach</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">Draft → copy → paste into GV. Tracks what you've sent.</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" style="font-size:13px;" onclick="openBulkQueue()">⚡ Bulk Queue</button>
+          <button class="btn btn-primary" style="font-size:13px;" onclick="openSmsModal(null)">+ Compose</button>
+        </div>
+      </div>
+
+      <!-- GV Workflow hint -->
+      <div style="background:rgba(79,110,247,.08);border:1px solid rgba(79,110,247,.2);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;">
+        <div style="font-size:20px;flex-shrink:0;">📋</div>
+        <div>
+          <div style="font-size:13px;font-weight:500;color:var(--text);">How to use with Google Voice</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:3px;line-height:1.6;">Compose a message → click <strong style="color:var(--accent2);">Send via GV ↗</strong> → copy number → copy message → paste into <a href="https://voice.google.com/u/0/messages" target="_blank" style="color:var(--accent2);">voice.google.com</a>. Or build a queue and work through them one-by-one.</div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:16px;gap:14px;">
+        <!-- Left: Queue -->
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;font-weight:600;">Send Queue</span>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <span id="queue-count-badge" style="font-size:11px;color:var(--text3);"></span>
+              <button onclick="clearSentFromQueue()" style="font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 6px;">Clear sent</button>
+            </div>
+          </div>
+          <div id="queue-list" style="max-height:400px;overflow-y:auto;">
+            <div style="padding:30px;text-align:center;color:var(--text3);font-size:13px;">
+              Queue is empty.<br><span style="font-size:12px;">Add contacts or use Bulk Queue ⚡</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Conversation log -->
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;font-weight:600;">Sent Log</span>
+            <span id="thread-count" style="font-size:11px;color:var(--text3);"></span>
+          </div>
+          <div class="thread-list" id="thread-list" style="max-height:400px;overflow-y:auto;"></div>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="grid-3">
+        <div class="card-sm"><div class="stat-label">Total Logged</div><div class="stat-value" id="sms-stat-sent" style="font-size:22px;">0</div></div>
+        <div class="card-sm"><div class="stat-label">Owners Reached</div><div class="stat-value" id="sms-stat-owners" style="font-size:22px;">0</div></div>
+        <div class="card-sm"><div class="stat-label">AI Drafted</div><div class="stat-value" id="sms-stat-ai" style="font-size:22px;">0</div></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- Bottom Nav (mobile) -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="bnav-item active" id="bn-dashboard" onclick="showPage('dashboard')"><span class="bnav-icon">⬡</span><span class="bnav-label">Dash</span></button>
+  <button class="bnav-item" id="bn-properties" onclick="showPage('properties')"><span class="bnav-icon">⊞</span><span class="bnav-label">Props</span></button>
+  <button class="bnav-item" id="bn-pipeline" onclick="showPage('pipeline')"><span class="bnav-icon">⇢</span><span class="bnav-label">Pipeline</span></button>
+  <button class="bnav-item" id="bn-analyzer" onclick="showPage('analyzer')"><span class="bnav-icon">◈</span><span class="bnav-label">Analyze</span></button>
+  <button class="bnav-item" id="bn-texts" onclick="showPage('texts')"><span class="bnav-icon">💬</span><span class="bnav-label">Texts</span></button>
+  <button class="bnav-item" id="bn-contacts" onclick="showPage('contacts')"><span class="bnav-icon">◎</span><span class="bnav-label">Contacts</span></button>
+</nav>
+
+<!-- SMS Compose Modal -->
+<div class="sms-modal-backdrop" id="sms-modal-backdrop">
+  <div class="sms-modal">
+    <div class="sms-modal-header">
+      <div>
+        <div class="sms-modal-title" id="sms-modal-title">New Text Message</div>
+        <div class="sms-modal-sub" id="sms-modal-sub"></div>
+      </div>
+      <button class="sms-modal-close" onclick="closeSmsModal()">✕</button>
+    </div>
+
+    <div class="sms-modal-body">
+      <!-- Recipient -->
+      <div>
+        <div class="sec-header">Recipient</div>
+        <select id="sms-recipient-select" onchange="loadSmsRecipient(this.value)" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;font-size:15px;color:var(--text);font-family:var(--font);-webkit-appearance:none;outline:none;margin-bottom:8px;">
+          <option value="">— Select owner —</option>
+        </select>
+        <div id="sms-recipient-info" style="font-size:12px;color:var(--text3);"></div>
+      </div>
+
+      <!-- Phone picker (if multiple) -->
+      <div id="sms-phone-picker" style="display:none;">
+        <div class="sec-header">Send to number</div>
+        <div id="sms-phone-options"></div>
+      </div>
+
+      <!-- Prior thread -->
+      <div id="sms-thread-wrap" style="display:none;">
+        <div class="sec-header">Conversation</div>
+        <div class="sms-thread" id="sms-thread-preview"></div>
+      </div>
+
+      <!-- Templates -->
+      <div>
+        <div class="sec-header">Quick Templates</div>
+        <div class="tpl-row" id="tpl-row"></div>
+      </div>
+
+      <!-- Compose -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div class="sec-header" style="margin:0;border:none;">Message</div>
+          <button onclick="aiDraftSms()" style="background:rgba(155,108,247,.15);color:var(--purple);border:1px solid rgba(155,108,247,.3);border-radius:var(--radius-sm);padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--font);">✦ AI Draft</button>
+        </div>
+        <textarea id="sms-message-body" class="sms-textarea" placeholder="Type your message or use a template above…" oninput="updateCharCount()"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+          <span id="sms-ai-status" style="font-size:11px;color:var(--purple);"></span>
+          <span id="sms-char-count" style="font-size:11px;color:var(--text3);">0 / 160</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- GV Send Panel -->
+    <div id="gv-send-panel" style="display:none;margin:0 18px 14px;background:var(--bg3);border:1px solid rgba(79,110,247,.25);border-radius:var(--radius);padding:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-size:16px;">📞</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text);">Google Voice Send Steps</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="gv-step" id="gv-step-1">
+          <div class="gv-step-num">1</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Copy the phone number</div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <code id="gv-phone-display" style="font-size:14px;font-weight:600;color:var(--teal);background:var(--bg4);padding:5px 10px;border-radius:var(--radius-sm);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</code>
+              <button onclick="gvCopyPhone()" id="gv-copy-phone-btn" style="background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:7px 12px;font-size:12px;cursor:pointer;font-family:var(--font);flex-shrink:0;">Copy</button>
+            </div>
+          </div>
+        </div>
+        <div class="gv-step" id="gv-step-2">
+          <div class="gv-step-num">2</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Copy the message</div>
+            <div style="display:flex;gap:6px;align-items:flex-start;">
+              <div id="gv-msg-preview" style="font-size:12px;color:var(--text2);background:var(--bg4);padding:7px 10px;border-radius:var(--radius-sm);flex:1;max-height:70px;overflow:hidden;text-overflow:ellipsis;line-height:1.5;"></div>
+              <button onclick="gvCopyMessage()" id="gv-copy-msg-btn" style="background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:7px 12px;font-size:12px;cursor:pointer;font-family:var(--font);flex-shrink:0;">Copy</button>
+            </div>
+          </div>
+        </div>
+        <div class="gv-step" id="gv-step-3">
+          <div class="gv-step-num">3</div>
+          <div style="flex:1;">
+            <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Open Google Voice &amp; paste</div>
+            <a href="https://voice.google.com/u/0/messages" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:7px 12px;font-size:12px;color:var(--text2);text-decoration:none;" onclick="gvOpened()">
+              🌐 Open Google Voice ↗
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeSmsModal()">Cancel</button>
+      <button id="gv-add-queue-btn" class="btn btn-ghost" style="flex:1;" onclick="addToQueue()">+ Queue</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="prepareSend()">Send via GV ↗</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Panel -->
+<div class="detail-panel" id="detail-panel">
+  <div class="panel-header">
+    <div><div class="panel-title" id="panel-title">Property Detail</div><div class="panel-sub" id="panel-sub"></div></div>
+    <button class="panel-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="panel-body" id="panel-body"></div>
+</div>
+
+<script>
+const RAW_PROPS = [{"Address":"1400 Island Vw","City":"Canyon Lake","State":"TX","Zip":"78133","Zip+4":"5138","Carrier Route":"R045","County":"Comal","FIPS":"48091","APN":"38272","Phone 1":"6504946472","Phone 1 Type":"Landline","Phone 1 DNC":"DNC","Phone 2":"4154946472","Phone 2 Type":"Landline","Email 1":"lpeacock01@aol.com","Owner Occupied":"No","Owner 1 Last Name":"Everthriving Real Estate Inves","Litigator":"No","Mailing Address":"862 Rorke Way","Mailing City":"Palo Alto","Mailing State":"CA","Mailing Zip":"94303","Mailing Zip+4":"4409","Mailing Carrier Route":"C057","Mailing FIPS":"06085","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"28224","Lot Size Sqft":"226512","Year Built":"1996","Effective Year Built":"1996","Vacant":"No","HOA Present":"No","Number of Stories":"1","Total Assessed Value":"4027060","Assessed Land Value":"467250","Assessed Improvement Value":"3559810","Improvement to Tax Value %":"0.884","Last Sale Date":"2005-08-01","Last Sale Recording Date":"2005-08-08","Last Sale Amount":"1500000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"EVERTHRIVING REAL ESTATE INVESTMENTS LLC","Total Open Loans":"0","Est. Remaining balance of Open Loans":"0","Est. Value":"1867769","Est. Loan-to-Value":"0","Est. Equity":"1867769","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"2293 E Common St","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"5477","Carrier Route":"C016","County":"Comal","FIPS":"48091","APN":"30394","Phone 1":"5126999835","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"5124183776","Phone 2 Type":"Landline","Phone 3":"7372225590","Phone 3 Type":"Landline","Phone 4":"5122664555","Phone 4 Type":"Landline","Phone 4 DNC":"DNC","Email 1":"dougwerhane@yahoo.com","Email 2":"werhane@austin.rr.com","Email 3":"dwerhane@yahoo.com","Owner Occupied":"No","Owner 1 Last Name":"Augusta Gruene Apartments Lp","Litigator":"No","Mailing Address":"7000 N Mopac Expy #410","Mailing Unit #":"410","Mailing City":"Austin","Mailing State":"TX","Mailing Zip":"78731","Mailing Zip+4":"3055","Mailing Carrier Route":"C010","Mailing FIPS":"48453","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"27404","Lot Size Sqft":"127369","Year Built":"1997","Effective Year Built":"1997","Vacant":"No","HOA Present":"No","Number of Stories":"1","Total Assessed Value":"4714918","Assessed Land Value":"1555044","Assessed Improvement Value":"3159874","Improvement to Tax Value %":"0.67","Last Sale Date":"2006-03-02","Last Sale Recording Date":"2006-03-08","Last Cash Buyer":"Yes","Last Sale Buyer Name 1":"KOONTZ/MCCOMBS 1 LTD","Total Open Loans":"0","Est. Remaining balance of Open Loans":"0","Est. Value":"4133445","Est. Loan-to-Value":"0","Est. Equity":"4133445","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"1231 Huisache Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"5774","Carrier Route":"C003","County":"Comal","FIPS":"48091","APN":"36036","Phone 1":"4084961234","Phone 1 Type":"Landline","Phone 2":"8088824021","Phone 2 Type":"Landline","Phone 3":"8088827068","Phone 3 Type":"Landline","Phone 4":"4082950557","Phone 4 Type":"Landline","Email 1":"tjroseinc@aol.com","Owner Occupied":"No","Owner 1 Last Name":"5959 Associates Llc","Litigator":"No","Mailing Address":"3375 Scott Blvd #308","Mailing Unit #":"308","Mailing City":"Santa Clara","Mailing State":"CA","Mailing Zip":"95054","Mailing Zip+4":"3113","Mailing Carrier Route":"C013","Mailing FIPS":"06085","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"132573","Lot Size Sqft":"432899","Year Built":"2004","Effective Year Built":"2004","Vacant":"No","HOA Present":"No","Number of Stories":"1","Total Assessed Value":"14334291","Assessed Land Value":"2331810","Assessed Improvement Value":"12002481","Improvement to Tax Value %":"0.837","Last Sale Date":"2006-04-05","Last Sale Recording Date":"2006-04-12","Last Sale Amount":"5000000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"5959 ASSOCIATES LLC","Loan 1 Date":"2025-01-23","Loan 1 Balance":"6920486","Loan 1 Type":"New Conventional","Loan 1 Lender":"SECURIAN LIFE INSURANCE CO","Loan 1 Rate":"6.85","Total Open Loans":"1","Est. Remaining balance of Open Loans":"6920486","Est. Total Monthly Payments":"45868.15","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"301 Castlewood Dr","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"8122","Carrier Route":"C011","County":"Comal","FIPS":"48091","APN":"72178","Phone 1":"8302370125","Phone 1 Type":"Cell","Phone 2":"8303879312","Phone 2 Type":"Cell","Phone 2 DNC":"DNC","Phone 3":"8304388873","Phone 3 Type":"Landline","Phone 4":"3107910644","Phone 4 Type":"Landline","Phone 4 DNC":"DNC","Phone 5":"3106446687","Phone 5 Type":"Landline","Email 1":"jnewmannb@yahoo.com","Email 2":"jctnewman@yahoo.com","Email 3":"dustyej@aol.com","Owner Occupied":"No","Owner 1 Last Name":"Castlewood Nb Llc","Litigator":"No","Mailing Address":"26515 Weiss Fels","Mailing City":"New Braunfels","Mailing State":"TX","Mailing Zip":"78132","Mailing Zip+4":"4661","Mailing Carrier Route":"R010","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"75368","Lot Size Sqft":"181384","Year Built":"1974","Effective Year Built":"1990","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"1","Total Assessed Value":"7257976","Assessed Land Value":"2111310","Assessed Improvement Value":"5146666","Improvement to Tax Value %":"0.709","Last Sale Date":"2006-04-11","Last Sale Recording Date":"2006-04-13","Last Sale Amount":"2950000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"ARROWHEAD NB LP","Loan 1 Date":"2025-04-29","Loan 1 Balance":"2824296","Loan 1 Type":"New Conventional","Loan 1 Lender":"INCOMMONS BANK NA","Loan 1 Rate":"6.64","Total Open Loans":"1","Est. Remaining balance of Open Loans":"2824296","Est. Value":"3015927","Est. Loan-to-Value":"93.646","Est. Equity":"191631","Est. Total Monthly Payments":"18277.14","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"2293 E Common St","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"5477","Carrier Route":"C016","County":"Comal","FIPS":"48091","APN":"30395","Phone 1":"5126999835","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"5124183776","Phone 2 Type":"Landline","Phone 3":"7372225590","Phone 3 Type":"Landline","Phone 4":"5122664555","Phone 4 Type":"Landline","Phone 4 DNC":"DNC","Email 1":"dougwerhane@yahoo.com","Email 2":"werhane@austin.rr.com","Email 3":"dwerhane@yahoo.com","Owner Occupied":"No","Owner 1 Last Name":"Augusta Gruene Apartments Lp","Litigator":"No","Mailing Address":"7000 N Mopac Expy #410","Mailing Unit #":"410","Mailing City":"Austin","Mailing State":"TX","Mailing Zip":"78731","Mailing Zip+4":"3055","Mailing Carrier Route":"C010","Mailing FIPS":"48453","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"25376","Lot Size Sqft":"128676","Year Built":"1997","Effective Year Built":"1997","Vacant":"No","HOA Present":"No","Number of Stories":"1","Total Assessed Value":"4401737","Assessed Land Value":"1517171","Assessed Improvement Value":"2884566","Improvement to Tax Value %":"0.655","Last Sale Date":"2007-07-05","Last Sale Recording Date":"2007-07-10","Last Cash Buyer":"Yes","Last Sale Buyer Name 1":"AUGUSTA GRUENE APARTMENTS LP","Last Sale Buyer Name 2":"HARRIS ROBERT W","Total Open Loans":"0","Est. Remaining balance of Open Loans":"0","Est. Value":"3860325","Est. Loan-to-Value":"0","Est. Equity":"3860325","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"2265 Goodwin Ln","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"7258","Carrier Route":"R052","County":"Comal","FIPS":"48091","APN":"67055","Phone 1":"3178758443","Phone 1 Type":"Landline","Phone 1 DNC":"DNC","Phone 2":"3178454283","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Phone 3":"3178758440","Phone 3 Type":"Landline","Owner Occupied":"No","Owner 1 Last Name":"Residences Of Solms Village Lp","Litigator":"No","Mailing Address":"310 E 96th St #400","Mailing Unit #":"400","Mailing City":"Indianapolis","Mailing State":"IN","Mailing Zip":"46240","Mailing Zip+4":"0120","Mailing Carrier Route":"C034","Mailing FIPS":"18097","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"91134","Lot Size Sqft":"286067","Year Built":"2013","Effective Year Built":"2013","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"1","Total Assessed Value":"2816410","Assessed Land Value":"497525","Assessed Improvement Value":"2318885","Improvement to Tax Value %":"0.823","Last Sale Date":"2008-01-02","Last Sale Recording Date":"2008-01-04","Last Sale Amount":"1614600 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"NEW BRAUNFELS 306 PARTNERS LP","Prior Sale Date":"2008-01-02","Prior Sale Recordng Date":"2008-01-04","Prior Sale Cash Buyer":"Yes","Prior Sale Buyer Name 1":"NEW BRAUNFELS GOODWIN PARTNERS LP","Total Open Loans":"0","Est. Remaining balance of Open Loans":"0","Est. Value":"3123356","Est. Loan-to-Value":"0","Est. Equity":"3123356","Foreclosure Factor":"Very Low","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"40930 Fm 3159","City":"Canyon Lake","State":"TX","Zip":"78133","Zip+4":"4910","Carrier Route":"R045","County":"Comal","FIPS":"48091","APN":"82024","Phone 1":"8307431915","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"2106635685","Phone 2 Type":"Cell","Phone 3":"5024325921","Phone 3 Type":"Cell","Phone 3 DNC":"DNC","Phone 4":"8308996669","Phone 4 Type":"Landline","Phone 4 DNC":"DNC","Phone 5":"8308998570","Phone 5 Type":"Landline","Phone 5 DNC":"DNC","Email 1":"teripaul@gvtc.com","Email 2":"isaaco@gvtc.com","Owner Occupied":"No","Owner 1 Last Name":"Alpine Valley Llc","Litigator":"No","Mailing Address":"730 Gallagher Dr","Mailing City":"Canyon Lake","Mailing State":"TX","Mailing Zip":"78133","Mailing Zip+4":"6442","Mailing Carrier Route":"R017","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Total Bathrooms":"13","Building Sqft":"10060","Lot Size Sqft":"281833","Year Built":"2013","Effective Year Built":"2013","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"2054410","Assessed Land Value":"534370","Assessed Improvement Value":"1520040","Improvement to Tax Value %":"0.74","Last Sale Date":"2009-05-01","Last Sale Recording Date":"2009-05-04","Last Cash Buyer":"Yes","Last Sale Buyer Name 1":"ISAACO LLC","Total Open Loans":"0","Est. Remaining balance of Open Loans":"0","Est. Value":"1581046","Est. Loan-to-Value":"0","Est. Equity":"1581046","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"1475 Fern Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"4718","Carrier Route":"C037","County":"Comal","FIPS":"48091","APN":"67156","Phone 1":"8302210617","Phone 1 Type":"Cell","Phone 2":"8302210633","Phone 2 Type":"Cell","Phone 3":"8303874190","Phone 3 Type":"Landline","Phone 4":"8306081381","Phone 4 Type":"Landline","Phone 5":"8303874595","Phone 5 Type":"Landline","Email 1":"chasityrobinson51@gmail.com","Email 2":"jenniferrobinson200@yahoo.com","Email 3":"jenniferrobinson266@gmail.com","Owner Occupied":"No","Owner 1 Last Name":"Sacatar Properties Llc","Litigator":"No","Mailing Address":"1475 Fern Ave","Mailing City":"New Braunfels","Mailing State":"TX","Mailing Zip":"78130","Mailing Zip+4":"4734","Mailing Carrier Route":"C037","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"19633","Lot Size Sqft":"51880","Year Built":"1985","Effective Year Built":"1985","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"1500000","Assessed Land Value":"879420","Assessed Improvement Value":"620580","Improvement to Tax Value %":"0.414","Last Sale Date":"2010-02-25","Last Sale Recording Date":"2010-03-01","Last Sale Amount":"1029600 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"SACATAR PROPERTIES LLC","Total Open Loans":"0","Est. Remaining balance of Open Loans":"0","Est. Value":"1192000","Est. Loan-to-Value":"0","Est. Equity":"1192000","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"3500 Fm 2673","City":"Canyon Lake","State":"TX","Zip":"78133","Zip+4":"3300","Carrier Route":"R045","County":"Comal","FIPS":"48091","APN":"82025","Phone 1":"8302698282","Phone 1 Type":"Cell","Phone 2":"2107430283","Phone 2 Type":"Cell","Phone 3":"2107431915","Phone 3 Type":"Cell","Phone 3 DNC":"DNC","Phone 4":"8302693823","Phone 4 Type":"Landline","Email 1":"hector@hectorluna.com","Owner Occupied":"No","Owner 1 Last Name":"Lakeshore Properties Llc","Litigator":"No","Mailing Address":"3500 Fm 2673","Mailing City":"Canyon Lake","Mailing State":"TX","Mailing Zip":"78133","Mailing Zip+4":"3300","Mailing Carrier Route":"R045","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Total Bathrooms":"20","Building Sqft":"11720","Lot Size Sqft":"151589","Year Built":"1980","Effective Year Built":"1980","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"2173560","Assessed Land Value":"1102115","Assessed Improvement Value":"1071445","Improvement to Tax Value %":"0.493","Last Sale Date":"2011-05-25","Last Sale Recording Date":"2011-05-27","Last Sale Amount":"905000 Est.","Last Cash Buyer":"Yes","Last Sale Buyer Name 1":"LAKESHORE PROPERTIES LLC","Total Open Loans":"0","Est. Remaining balance of Open Loans":"0","Est. Value":"2077040","Est. Loan-to-Value":"0","Est. Equity":"2077040","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"3333 Fm 2673","City":"Canyon Lake","State":"TX","Zip":"78133","Zip+4":"3300","Carrier Route":"R045","County":"Comal","FIPS":"48091","APN":"82026","Phone 1":"8302698282","Phone 1 Type":"Cell","Phone 2":"2107430283","Phone 2 Type":"Cell","Phone 3":"2107431915","Phone 3 Type":"Cell","Phone 3 DNC":"DNC","Phone 4":"8302693823","Phone 4 Type":"Landline","Email 1":"hector@hectorluna.com","Owner Occupied":"No","Owner 1 Last Name":"Lakeshore Properties Llc","Litigator":"No","Mailing Address":"3500 Fm 2673","Mailing City":"Canyon Lake","Mailing State":"TX","Mailing Zip":"78133","Mailing Zip+4":"3300","Mailing Carrier Route":"R045","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Total Bathrooms":"7","Building Sqft":"4516","Lot Size Sqft":"49632","Year Built":"1980","Effective Year Built":"1980","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"718330","Assessed Land Value":"372690","Assessed Improvement Value":"345640","Improvement to Tax Value %":"0.481","Last Sale Date":"2011-05-25","Last Sale Recording Date":"2011-05-27","Last Sale Amount":"905000 Est.","Last Cash Buyer":"Yes","Last Sale Buyer Name 1":"LAKESHORE PROPERTIES LLC","Total Open Loans":"0","Est. Remaining balance of Open Loans":"0","Est. Value":"686085","Est. Loan-to-Value":"0","Est. Equity":"686085","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"3425 Fm 2673","City":"Canyon Lake","State":"TX","Zip":"78133","Zip+4":"3300","Carrier Route":"R045","County":"Comal","FIPS":"48091","APN":"82027","Phone 1":"8302698282","Phone 1 Type":"Cell","Phone 2":"2107430283","Phone 2 Type":"Cell","Phone 3":"2107431915","Phone 3 Type":"Cell","Phone 3 DNC":"DNC","Phone 4":"8302693823","Phone 4 Type":"Landline","Email 1":"hector@hectorluna.com","Owner Occupied":"No","Owner 1 Last Name":"Lakeshore Properties Llc","Litigator":"No","Mailing Address":"3500 Fm 2673","Mailing City":"Canyon Lake","Mailing State":"TX","Mailing Zip":"78133","Mailing Zip+4":"3300","Mailing Carrier Route":"R045","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Total Bathrooms":"6","Building Sqft":"4080","Lot Size Sqft":"43560","Year Built":"1980","Effective Year Built":"1980","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"769790","Assessed Land Value":"369855","Assessed Improvement Value":"399935","Improvement to Tax Value %":"0.52","Last Sale Date":"2011-05-25","Last Sale Recording Date":"2011-05-27","Last Sale Amount":"905000 Est.","Last Cash Buyer":"Yes","Last Sale Buyer Name 1":"LAKESHORE PROPERTIES LLC","Total Open Loans":"0","Est. Remaining balance of Open Loans":"0","Est. Value":"735649","Est. Loan-to-Value":"0","Est. Equity":"735649","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"735 N Walnut Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"4540","Carrier Route":"C014","County":"Comal","FIPS":"48091","APN":"39437","Phone 1":"8304330388","Phone 1 Type":"Cell","Phone 2":"8302210387","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Phone 3":"8302210371","Phone 3 Type":"Landline","Phone 4":"8305562100","Phone 4 Type":"Landline","Email 1":"jmccurdy@gvtc.com","Owner Occupied":"No","Owner 1 Last Name":"Jm2 Properties Llc","Litigator":"No","Mailing Address":"735 N Walnut Ave","Mailing City":"New Braunfels","Mailing State":"TX","Mailing Zip":"78130","Mailing Zip+4":"4540","Mailing Carrier Route":"C014","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Total Bathrooms":"16","Building Sqft":"10516","Lot Size Sqft":"34369","Year Built":"1968","Effective Year Built":"1968","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"1020700","Assessed Land Value":"451035","Assessed Improvement Value":"569665","Improvement to Tax Value %":"0.558","Last Sale Date":"2012-08-09","Last Sale Recording Date":"2012-08-13","Last Sale Amount":"830000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"JM2 PROPERTIES LLC","Loan 1 Date":"2023-01-10","Loan 1 Balance":"568000","Loan 1 Type":"New Conventional","Loan 1 Lender":"AMERIS BANK","Loan 1 Rate":"5.5","Total Open Loans":"1","Est. Remaining balance of Open Loans":"568000","Est. Value":"796000","Est. Loan-to-Value":"71.357","Est. Equity":"228000","Est. Total Monthly Payments":"3225.25","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"1180 Walnut Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"4538","Carrier Route":"C014","County":"Comal","FIPS":"48091","APN":"51898","Phone 1":"8304330388","Phone 1 Type":"Cell","Phone 2":"8302210387","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Phone 3":"8302210371","Phone 3 Type":"Landline","Phone 4":"8305562100","Phone 4 Type":"Landline","Email 1":"jmccurdy@gvtc.com","Owner Occupied":"No","Owner 1 Last Name":"Jm2 Properties Llc","Litigator":"No","Mailing Address":"735 N Walnut Ave","Mailing City":"New Braunfels","Mailing State":"TX","Mailing Zip":"78130","Mailing Zip+4":"4540","Mailing Carrier Route":"C014","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Total Bathrooms":"5","Building Sqft":"3588","Lot Size Sqft":"28157","Year Built":"1960","Effective Year Built":"1960","Vacant":"No","HOA Present":"No","Number of Stories":"1","Total Assessed Value":"422700","Assessed Land Value":"188910","Assessed Improvement Value":"233790","Improvement to Tax Value %":"0.553","Last Sale Date":"2014-09-17","Last Sale Recording Date":"2014-09-22","Last Sale Amount":"500000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"JM2 PROPERTIES LLC","Loan 1 Date":"2023-01-10","Loan 1 Balance":"568000","Loan 1 Type":"New Conventional","Loan 1 Lender":"AMERIS BANK","Loan 1 Rate":"5.5","Total Open Loans":"1","Est. Remaining balance of Open Loans":"568000","Est. Value":"271600","Est. Loan-to-Value":"209.1","Est. Equity":"-296400","Est. Total Monthly Payments":"3225.25","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"208 Highland Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"4528","Carrier Route":"C014","County":"Comal","FIPS":"48091","APN":"51879","Phone 1":"8304330388","Phone 1 Type":"Cell","Phone 2":"8302210387","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Phone 3":"8302210371","Phone 3 Type":"Landline","Phone 4":"8305562100","Phone 4 Type":"Landline","Email 1":"jmccurdy@gvtc.com","Owner Occupied":"No","Owner 1 Last Name":"Jm2 Properties Llc","Litigator":"No","Mailing Address":"735 N Walnut Ave","Mailing City":"New Braunfels","Mailing State":"TX","Mailing Zip":"78130","Mailing Zip+4":"4540","Mailing Carrier Route":"C014","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Total Bathrooms":"5","Building Sqft":"2608","Lot Size Sqft":"15682","Year Built":"1962","Effective Year Built":"1962","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"305790","Assessed Land Value":"166950","Assessed Improvement Value":"138840","Improvement to Tax Value %":"0.454","Last Sale Date":"2014-12-17","Last Sale Recording Date":"2014-12-18","Last Sale Amount":"500000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"JM2 PROPERTIES LLC","Loan 1 Date":"2023-01-10","Loan 1 Balance":"568000","Loan 1 Type":"New Conventional","Loan 1 Lender":"AMERIS BANK","Loan 1 Rate":"5.5","Total Open Loans":"1","Est. Remaining balance of Open Loans":"568000","Est. Value":"197300","Est. Loan-to-Value":"287.9","Est. Equity":"-370700","Est. Total Monthly Payments":"3225.25","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"2507 Fm 1101","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"1943","Carrier Route":"R065","County":"Comal","FIPS":"48091","APN":"51900","Phone 1":"8303796810","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"8302210439","Phone 2 Type":"Landline","Phone 3":"8302625111","Phone 3 Type":"Landline","Email 1":"susanmartinezm32@gmail.com","Owner Occupied":"No","Owner 1 First Name":"Susan","Owner 1 Last Name":"Martinez","Litigator":"No","Mailing Address":"2507 Fm 1101","Mailing City":"New Braunfels","Mailing State":"TX","Mailing Zip":"78130","Mailing Zip+4":"1943","Mailing Carrier Route":"R065","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Total Bathrooms":"14","Building Sqft":"9250","Lot Size Sqft":"130680","Year Built":"1975","Effective Year Built":"1975","Vacant":"No","HOA Present":"No","Number of Stories":"1","Total Assessed Value":"1261390","Assessed Land Value":"587475","Assessed Improvement Value":"673915","Improvement to Tax Value %":"0.534","Last Sale Date":"1994-08-01","Last Sale Recording Date":"1994-08-04","Last Cash Buyer":"No","Last Sale Buyer Name 1":"MARTINEZ DAVID M","Total Open Loans":"0","Est. Remaining balance of Open Loans":"0","Est. Value":"957000","Est. Loan-to-Value":"0","Est. Equity":"957000","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"2700 Oak Run Pkwy","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"5478","Carrier Route":"C043","County":"Comal","FIPS":"48091","APN":"69523","Phone 1":"2016390770","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"9737641710","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Owner Occupied":"No","Owner 1 Last Name":"Oak Run Nb Llc","Litigator":"No","Mailing Address":"401 Hackensack Ave #700","Mailing Unit #":"700","Mailing City":"Hackensack","Mailing State":"NJ","Mailing Zip":"07601","Mailing Zip+4":"6302","Mailing Carrier Route":"C015","Mailing FIPS":"34003","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"102200","Lot Size Sqft":"346361","Year Built":"1985","Effective Year Built":"1985","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"5764010","Assessed Land Value":"1401380","Assessed Improvement Value":"4362630","Improvement to Tax Value %":"0.757","Last Sale Date":"2018-04-10","Last Sale Recording Date":"2018-04-13","Last Sale Amount":"10350000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"OAK RUN NB LLC","Loan 1 Date":"2018-04-10","Loan 1 Balance":"7700000","Loan 1 Type":"New Conventional","Loan 1 Lender":"ARBOR REALTY SR INC","Loan 1 Rate":"5.38","Total Open Loans":"1","Est. Remaining balance of Open Loans":"7700000","Est. Value":"9754040","Est. Loan-to-Value":"78.943","Est. Equity":"2054040","Est. Total Monthly Payments":"43220.58","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"215 Lakeview Dr","City":"Spring Branch","State":"TX","Zip":"78070","Zip+4":"3222","Carrier Route":"R076","County":"Comal","FIPS":"48091","APN":"36993","Phone 1":"8305218622","Phone 1 Type":"Cell","Phone 2":"8304369120","Phone 2 Type":"Cell","Phone 3":"8305218601","Phone 3 Type":"Cell","Phone 4":"8304369120","Phone 4 Type":"Cell","Email 1":"info@comalcountyrealty.com","Owner Occupied":"No","Owner 1 Last Name":"Sjt Properties Llc","Litigator":"No","Mailing Address":"215 Lakeview Dr","Mailing City":"Spring Branch","Mailing State":"TX","Mailing Zip":"78070","Mailing Zip+4":"3222","Mailing Carrier Route":"R076","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Total Bathrooms":"6","Building Sqft":"3360","Lot Size Sqft":"35283","Year Built":"1974","Effective Year Built":"1974","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"466250","Assessed Land Value":"287750","Assessed Improvement Value":"178500","Improvement to Tax Value %":"0.383","Last Sale Date":"2015-02-23","Last Sale Recording Date":"2015-02-27","Last Sale Amount":"300000 Est.","Last Cash Buyer":"Yes","Last Sale Buyer Name 1":"SJT PROPERTIES LLC","Total Open Loans":"0","Est. Remaining balance of Open Loans":"0","Est. Value":"502000","Est. Loan-to-Value":"0","Est. Equity":"502000","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"125 Comal Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"5459","Carrier Route":"C003","County":"Comal","FIPS":"48091","APN":"67046","Phone 1":"8303793498","Phone 1 Type":"Cell","Phone 2":"8303793493","Phone 2 Type":"Cell","Email 1":"stevegibsonrealtor@gmail.com","Owner Occupied":"No","Owner 1 Last Name":"Stevenson Land Llc","Litigator":"No","Mailing Address":"609 S Union Ave","Mailing City":"New Braunfels","Mailing State":"TX","Mailing Zip":"78130","Mailing Zip+4":"5428","Mailing Carrier Route":"C003","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Total Bathrooms":"34","Building Sqft":"21232","Lot Size Sqft":"72745","Year Built":"1972","Effective Year Built":"1972","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"2012540","Assessed Land Value":"436475","Assessed Improvement Value":"1576065","Improvement to Tax Value %":"0.783","Last Sale Date":"2015-09-04","Last Sale Recording Date":"2015-09-14","Last Sale Amount":"1650000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"STEVENSON LAND LLC","Loan 1 Date":"2020-10-27","Loan 1 Balance":"1080000","Loan 1 Type":"New Conventional","Loan 1 Lender":"LIVE OAK BANK","Loan 1 Rate":"3.65","Total Open Loans":"1","Est. Remaining balance of Open Loans":"1080000","Est. Value":"1612000","Est. Loan-to-Value":"67.00","Est. Equity":"532000","Est. Total Monthly Payments":"4963.2","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"2100 Common St","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"6026","Carrier Route":"C016","County":"Comal","FIPS":"48091","APN":"69520","Phone 1":"9546876339","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"9546873737","Phone 2 Type":"Landline","Owner Occupied":"No","Owner 1 Last Name":"Greystar Real Estate Partners","Litigator":"No","Mailing Address":"18 Broad St #300","Mailing Unit #":"300","Mailing City":"Charleston","Mailing State":"SC","Mailing Zip":"29401","Mailing Zip+4":"2738","Mailing Carrier Route":"C006","Mailing FIPS":"45019","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"247000","Lot Size Sqft":"681264","Year Built":"2015","Effective Year Built":"2015","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"3","Total Assessed Value":"21116660","Assessed Land Value":"4095005","Assessed Improvement Value":"17021655","Improvement to Tax Value %":"0.806","Last Sale Date":"2016-08-31","Last Sale Recording Date":"2016-09-01","Last Sale Amount":"22500000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"LANTOWER COMMON STREET LLC","Loan 1 Date":"2020-06-05","Loan 1 Balance":"19200000","Loan 1 Type":"New Conventional","Loan 1 Lender":"NATIONSTAR MORTGAGE LLC","Loan 1 Rate":"3.08","Total Open Loans":"1","Est. Remaining balance of Open Loans":"19200000","Est. Value":"23590000","Est. Loan-to-Value":"81.392","Est. Equity":"4390000","Est. Total Monthly Payments":"89924.76","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"1470 Gruene Rd","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"2802","Carrier Route":"C014","County":"Comal","FIPS":"48091","APN":"72208","Phone 1":"7579616161","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"7578382750","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Owner Occupied":"No","Owner 1 Last Name":"Nts Gruene Ltd","Litigator":"No","Mailing Address":"1470 Gruene Rd","Mailing City":"New Braunfels","Mailing State":"TX","Mailing Zip":"78130","Mailing Zip+4":"2802","Mailing Carrier Route":"C014","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"138570","Lot Size Sqft":"522720","Year Built":"1998","Effective Year Built":"1998","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"9699910","Assessed Land Value":"3056310","Assessed Improvement Value":"6643600","Improvement to Tax Value %":"0.685","Last Sale Date":"2017-02-23","Last Sale Recording Date":"2017-02-24","Last Sale Amount":"18000000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"NTS GRUENE LTD","Loan 1 Date":"2024-11-06","Loan 1 Balance":"10000000","Loan 1 Type":"New Conventional","Loan 1 Lender":"ARBOR REALTY SR INC","Loan 1 Rate":"6.17","Total Open Loans":"1","Est. Remaining balance of Open Loans":"10000000","Est. Value":"13189000","Est. Loan-to-Value":"75.822","Est. Equity":"3189000","Est. Total Monthly Payments":"61055.6","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"1900 Landa St","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"4607","Carrier Route":"C014","County":"Comal","FIPS":"48091","APN":"69521","Phone 1":"7579616161","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"7578382750","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Owner Occupied":"No","Owner 1 Last Name":"Nts Gruene Ltd","Litigator":"No","Mailing Address":"1470 Gruene Rd","Mailing City":"New Braunfels","Mailing State":"TX","Mailing Zip":"78130","Mailing Zip+4":"2802","Mailing Carrier Route":"C014","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"194946","Lot Size Sqft":"703872","Year Built":"2002","Effective Year Built":"2002","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"3","Total Assessed Value":"17804860","Assessed Land Value":"4887000","Assessed Improvement Value":"12917860","Improvement to Tax Value %":"0.726","Last Sale Date":"2017-02-23","Last Sale Recording Date":"2017-02-24","Last Sale Amount":"24500000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"NTS GRUENE LTD","Loan 1 Date":"2024-11-06","Loan 1 Balance":"10000000","Loan 1 Type":"New Conventional","Loan 1 Lender":"ARBOR REALTY SR INC","Loan 1 Rate":"6.17","Total Open Loans":"1","Est. Remaining balance of Open Loans":"10000000","Est. Value":"23359000","Est. Loan-to-Value":"42.808","Est. Equity":"13359000","Est. Total Monthly Payments":"61055.6","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"431 N Union Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"5414","Carrier Route":"C003","County":"Comal","FIPS":"48091","APN":"67024","Phone 1":"9565201430","Phone 1 Type":"Cell","Phone 2":"9565201431","Phone 2 Type":"Cell","Phone 3":"9562275444","Phone 3 Type":"Landline","Email 1":"lrubio5003@gmail.com","Owner Occupied":"No","Owner 1 Last Name":"Rb Falcon Properties Llc","Litigator":"No","Mailing Address":"431 N Union Ave","Mailing City":"New Braunfels","Mailing State":"TX","Mailing Zip":"78130","Mailing Zip+4":"5414","Mailing Carrier Route":"C003","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Total Bathrooms":"11","Building Sqft":"6370","Lot Size Sqft":"14375","Year Built":"1967","Effective Year Built":"1967","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"651090","Assessed Land Value":"170610","Assessed Improvement Value":"480480","Improvement to Tax Value %":"0.738","Last Sale Date":"2017-11-21","Last Sale Recording Date":"2017-11-27","Last Sale Amount":"550000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"RB FALCON PROPERTIES LLC","Loan 1 Date":"2023-10-06","Loan 1 Balance":"475000","Loan 1 Type":"New Conventional","Loan 1 Lender":"INCOMMONS BANK NA","Loan 1 Rate":"7.25","Total Open Loans":"1","Est. Remaining balance of Open Loans":"475000","Est. Value":"494000","Est. Loan-to-Value":"96.154","Est. Equity":"19000","Est. Total Monthly Payments":"3241.24","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"300 N Walnut Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"5007","Carrier Route":"C003","County":"Comal","FIPS":"48091","APN":"67002","Phone 1":"8308325810","Phone 1 Type":"Cell","Phone 2":"8307432226","Phone 2 Type":"Cell","Phone 3":"9793241900","Phone 3 Type":"Landline","Phone 3 DNC":"DNC","Email 1":"bselleck@sellliquidation.com","Owner Occupied":"No","Owner 1 Last Name":"Nb Condo Llc","Litigator":"No","Mailing Address":"4203 Yoakum Blvd #100","Mailing Unit #":"100","Mailing City":"Houston","Mailing State":"TX","Mailing Zip":"77006","Mailing Zip+4":"5139","Mailing Carrier Route":"C053","Mailing FIPS":"48201","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Total Bathrooms":"30","Building Sqft":"19600","Lot Size Sqft":"16500","Year Built":"1967","Effective Year Built":"1967","Vacant":"No","HOA Present":"No","Number of Stories":"3","Total Assessed Value":"1900000","Assessed Land Value":"440000","Assessed Improvement Value":"1460000","Improvement to Tax Value %":"0.768","Last Sale Date":"2018-07-12","Last Sale Recording Date":"2018-07-16","Last Sale Amount":"1350000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"NB CONDO LLC","Loan 1 Date":"2021-12-16","Loan 1 Balance":"1350000","Loan 1 Type":"New Conventional","Loan 1 Lender":"SOUTHSIDE BANK","Loan 1 Rate":"3.5","Total Open Loans":"1","Est. Remaining balance of Open Loans":"1350000","Est. Value":"1484000","Est. Loan-to-Value":"90.972","Est. Equity":"134000","Est. Total Monthly Payments":"6058.44","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"1545 Gruene Rd","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"2843","Carrier Route":"C014","County":"Comal","FIPS":"48091","APN":"70038","Phone 1":"9173008891","Phone 1 Type":"Cell","Phone 2":"9175220143","Phone 2 Type":"Cell","Phone 3":"9174217700","Phone 3 Type":"Landline","Phone 3 DNC":"DNC","Email 1":"sswaminathan@manorgroupllc.com","Email 2":"sgswaminathan@gmail.com","Owner Occupied":"No","Owner 1 Last Name":"Manor Gruene Llc","Litigator":"No","Mailing Address":"521 Fifth Ave","Mailing City":"New York","Mailing State":"NY","Mailing Zip":"10175","Mailing Zip+4":"0099","Mailing Carrier Route":"C010","Mailing FIPS":"36061","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"131512","Lot Size Sqft":"520116","Year Built":"2007","Effective Year Built":"2007","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"3","Total Assessed Value":"12432390","Assessed Land Value":"3277080","Assessed Improvement Value":"9155310","Improvement to Tax Value %":"0.737","Last Sale Date":"2019-05-01","Last Sale Recording Date":"2019-05-06","Last Sale Amount":"24500000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"MANOR GRUENE LLC","Loan 1 Date":"2024-10-30","Loan 1 Balance":"16700000","Loan 1 Type":"New Conventional","Loan 1 Lender":"ARBOR REALTY SR INC","Loan 1 Rate":"6.37","Total Open Loans":"1","Est. Remaining balance of Open Loans":"16700000","Est. Value":"18767000","Est. Loan-to-Value":"88.982","Est. Equity":"2067000","Est. Total Monthly Payments":"103706.12","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"2700 Ramsgate St","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"7258","Carrier Route":"R052","County":"Comal","FIPS":"48091","APN":"72181","Phone 1":"9179730965","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"9175220143","Phone 2 Type":"Cell","Phone 3":"9174217700","Phone 3 Type":"Landline","Phone 3 DNC":"DNC","Email 1":"sswaminathan@manorgroupllc.com","Email 2":"sgswaminathan@gmail.com","Owner Occupied":"No","Owner 1 Last Name":"Manor Ramsgate Llc","Litigator":"No","Mailing Address":"521 Fifth Ave","Mailing City":"New York","Mailing State":"NY","Mailing Zip":"10175","Mailing Zip+4":"0099","Mailing Carrier Route":"C010","Mailing FIPS":"36061","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"161526","Lot Size Sqft":"534196","Year Built":"2009","Effective Year Built":"2009","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"3","Total Assessed Value":"13671050","Assessed Land Value":"4091885","Assessed Improvement Value":"9579165","Improvement to Tax Value %":"0.701","Last Sale Date":"2019-11-01","Last Sale Recording Date":"2019-11-05","Last Sale Amount":"33000000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"MANOR RAMSGATE LLC","Loan 1 Date":"2024-12-18","Loan 1 Balance":"20500000","Loan 1 Type":"New Conventional","Loan 1 Lender":"ARBOR REALTY SR INC","Loan 1 Rate":"6.27","Total Open Loans":"1","Est. Remaining balance of Open Loans":"20500000","Est. Value":"25107379","Est. Loan-to-Value":"81.651","Est. Equity":"-25107379","Est. Total Monthly Payments":"127078.12","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"1375 Gruene Rd","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"2843","Carrier Route":"C014","County":"Comal","FIPS":"48091","APN":"72209","Phone 1":"2144100200","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"9179730965","Phone 2 Type":"Cell","Phone 3":"9179730966","Phone 3 Type":"Cell","Phone 3 DNC":"DNC","Phone 4":"2144100205","Phone 4 Type":"Landline","Email 1":"nmollett@greystar.com","Email 2":"khenderson@greystar.com","Owner Occupied":"No","Owner 1 Last Name":"Greystar Real Estate Partners","Litigator":"No","Mailing Address":"18 Broad St #300","Mailing Unit #":"300","Mailing City":"Charleston","Mailing State":"SC","Mailing Zip":"29401","Mailing Zip+4":"2738","Mailing Carrier Route":"C006","Mailing FIPS":"45019","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"193614","Lot Size Sqft":"660902","Year Built":"1997","Effective Year Built":"1997","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"14011130","Assessed Land Value":"3899530","Assessed Improvement Value":"10111600","Improvement to Tax Value %":"0.722","Last Sale Date":"2020-07-31","Last Sale Recording Date":"2020-08-07","Last Sale Amount":"28000000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"NB VENTURE LLC","Loan 1 Date":"2020-07-31","Loan 1 Balance":"20300000","Loan 1 Type":"New Conventional","Loan 1 Lender":"NATIONSTAR MORTGAGE LLC","Loan 1 Rate":"3.04","Total Open Loans":"1","Est. Remaining balance of Open Loans":"20300000","Est. Value":"29254000","Est. Loan-to-Value":"69.390","Est. Equity":"8954000","Est. Total Monthly Payments":"96455.84","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"1141 Gruene Rd","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"2843","Carrier Route":"C014","County":"Comal","FIPS":"48091","APN":"72171","Phone 1":"7578382750","Phone 1 Type":"Landline","Phone 1 DNC":"DNC","Owner Occupied":"No","Owner 1 Last Name":"Nbv-1375 Llc","Litigator":"No","Mailing Address":"1141 Gruene Rd","Mailing City":"New Braunfels","Mailing State":"TX","Mailing Zip":"78130","Mailing Zip+4":"2843","Mailing Carrier Route":"C014","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"59832","Lot Size Sqft":"660902","Year Built":"1984","Effective Year Built":"1984","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"5148600","Assessed Land Value":"1952000","Assessed Improvement Value":"3196600","Improvement to Tax Value %":"0.621","Last Sale Date":"2020-11-10","Last Sale Recording Date":"2020-11-10","Last Sale Amount":"7678000 Est.","Last Cash Buyer":"Yes","Last Sale Buyer Name 1":"NBV-1375 LLC","Total Open Loans":"0","Est. Remaining balance of Open Loans":"0","Est. Value":"7678000","Est. Loan-to-Value":"0","Est. Equity":"7678000","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"1550 N Walnut Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"2860","Carrier Route":"C014","County":"Comal","FIPS":"48091","APN":"67043","Phone 1":"8303793498","Phone 1 Type":"Cell","Phone 2":"8303793493","Phone 2 Type":"Cell","Email 1":"stevegibsonrealtor@gmail.com","Owner Occupied":"No","Owner 1 Last Name":"Stevenson Land Llc","Litigator":"No","Mailing Address":"609 S Union Ave","Mailing City":"New Braunfels","Mailing State":"TX","Mailing Zip":"78130","Mailing Zip+4":"5428","Mailing Carrier Route":"C003","Mailing FIPS":"48091","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Total Bathrooms":"14","Building Sqft":"9860","Lot Size Sqft":"60242","Year Built":"1985","Effective Year Built":"1985","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"1012370","Assessed Land Value":"296490","Assessed Improvement Value":"715880","Improvement to Tax Value %":"0.707","Last Sale Date":"2020-11-20","Last Sale Recording Date":"2020-11-23","Last Sale Amount":"1360000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"STEVENSON LAND LLC","Loan 1 Date":"2022-10-13","Loan 1 Balance":"868000","Loan 1 Type":"New Conventional","Loan 1 Lender":"CITIZENS NATIONAL BANK","Loan 1 Rate":"5.65","Total Open Loans":"1","Est. Remaining balance of Open Loans":"868000","Est. Value":"747000","Est. Loan-to-Value":"116.198","Est. Equity":"-121000","Est. Total Monthly Payments":"5305.94","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"2200 Gruene Rd","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"5455","Carrier Route":"C014","County":"Comal","FAILING FIPS":"48091","APN":"72199","Phone 1":"7138519966","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"7138510185","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Owner Occupied":"No","Owner 1 Last Name":"Zia Investments Llc","Litigator":"No","Mailing Address":"6200 Savoy Dr #600","Mailing Unit #":"600","Mailing City":"Houston","Mailing State":"TX","Mailing Zip":"77036","Mailing Zip+4":"3307","Mailing Carrier Route":"C025","Mailing FIPS":"48201","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"90096","Lot Size Sqft":"465479","Year Built":"1997","Effective Year Built":"1997","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"6991260","Assessed Land Value":"2790945","Assessed Improvement Value":"4200315","Improvement to Tax Value %":"0.601","Last Sale Date":"2021-01-11","Last Sale Recording Date":"2021-01-12","Last Sale Amount":"9500000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"ZIA INVESTMENTS LLC","Loan 1 Date":"2021-01-11","Loan 1 Balance":"7150000","Loan 1 Type":"New Conventional","Loan 1 Lender":"ARBOR REALTY SR INC","Loan 1 Rate":"2.79","Loan 2 Date":"2023-12-01","Loan 2 Balance":"390000","Loan 2 Type":"New Conventional","Loan 2 Lender":"ARBOR REALTY SR INC","Loan 2 Rate":"8.0","Total Open Loans":"2","Est. Remaining balance of Open Loans":"7540000","Est. Value":"13584000","Est. Loan-to-Value":"55.507","Est. Equity":"6044000","Est. Total Monthly Payments":"46497.26","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"1250 Gruene Rd","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"4610","Carrier Route":"C014","County":"Comal","FIPS":"48091","APN":"72159","Phone 1":"7138519966","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"7138510185","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Owner Occupied":"No","Owner 1 Last Name":"Zia Investments Llc","Litigator":"No","Mailing Address":"6200 Savoy Dr #600","Mailing Unit #":"600","Mailing City":"Houston","Mailing State":"TX","Mailing Zip":"77036","Mailing Zip+4":"3307","Mailing Carrier Route":"C025","Mailing FIPS":"48201","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"120432","Lot Size Sqft":"596793","Year Built":"1985","Effective Year Built":"1985","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"7975580","Assessed Land Value":"3576830","Assessed Improvement Value":"4398750","Improvement to Tax Value %":"0.552","Last Sale Date":"2021-07-09","Last Sale Recording Date":"2021-07-12","Last Sale Amount":"13500000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"ZIA INVESTMENTS LLC","Loan 1 Date":"2021-07-09","Loan 1 Balance":"10100000","Loan 1 Type":"New Conventional","Loan 1 Lender":"ARBOR REALTY SR INC","Loan 1 Rate":"3.34","Total Open Loans":"1","Est. Remaining balance of Open Loans":"10100000","Est. Value":"18241000","Est. Loan-to-Value":"55.372","Est. Equity":"8141000","Est. Total Monthly Payments":"44671.84","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"401 W Bridge St","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"4605","Carrier Route":"C003","County":"Comal","FIPS":"48091","APN":"67061","Phone 1":"2815432400","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"2815432401","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Phone 3":"2819557117","Phone 3 Type":"Landline","Phone 3 DNC":"DNC","Email 1":"dlundgren@hcinvestors.com","Email 2":"info@hcinvestors.com","Owner Occupied":"No","Owner 1 Last Name":"Hc Investors Llc","Litigator":"No","Mailing Address":"10497 Town And Country Way #500","Mailing Unit #":"500","Mailing City":"Houston","Mailing State":"TX","Mailing Zip":"77024","Mailing Zip+4":"1105","Mailing Carrier Route":"C033","Mailing FIPS":"48201","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"65012","Lot Size Sqft":"98881","Year Built":"1979","Effective Year Built":"1979","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"3750000","Assessed Land Value":"1246750","Assessed Improvement Value":"2503250","Improvement to Tax Value %":"0.668","Last Sale Date":"2021-08-11","Last Sale Recording Date":"2021-08-12","Last Sale Amount":"6700000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"HC INVESTORS LLC","Loan 1 Date":"2021-08-11","Loan 1 Balance":"5020000","Loan 1 Type":"New Conventional","Loan 1 Lender":"ARBOR REALTY SR INC","Loan 1 Rate":"3.19","Total Open Loans":"1","Est. Remaining balance of Open Loans":"5020000","Est. Value":"5649000","Est. Loan-to-Value":"88.864","Est. Equity":"629000","Est. Total Monthly Payments":"21517.7","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"505 Suttles Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"4709","Carrier Route":"C003","County":"Comal","FIPS":"48091","APN":"38258","Phone 1":"4029396000","Phone 1 Type":"Landline","Phone 1 DNC":"DNC","Phone 2":"4029392000","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Owner Occupied":"No","Owner 1 Last Name":"Gretna Green Apartments Llc","Litigator":"No","Mailing Address":"12700 W Dodge Rd #300","Mailing Unit #":"300","Mailing City":"Omaha","Mailing State":"NE","Mailing Zip":"68154","Mailing Zip+4":"1928","Mailing Carrier Route":"C025","Mailing FIPS":"31055","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"87630","Lot Size Sqft":"232869","Year Built":"1970","Effective Year Built":"1988","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"5059900","Assessed Land Value":"1254820","Assessed Improvement Value":"3805080","Improvement to Tax Value %":"0.752","Last Sale Date":"2021-11-01","Last Sale Recording Date":"2021-11-04","Last Sale Amount":"11800000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"GRETNA GREEN APARTMENTS LLC","Loan 1 Date":"2021-11-01","Loan 1 Balance":"8850000","Loan 1 Type":"New Conventional","Loan 1 Lender":"WALKER AND DUNLOP LLC","Loan 1 Rate":"3.59","Total Open Loans":"1","Est. Remaining balance of Open Loans":"8850000","Est. Value":"6632000","Est. Loan-to-Value":"133.447","Est. Equity":"-2218000","Est. Total Monthly Payments":"40129.84","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"850 N Walnut Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"4541","Carrier Route":"C014","County":"Comal","FIPS":"48091","APN":"67038","Phone 1":"7134756600","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"7134756666","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Owner Occupied":"No","Owner 1 Last Name":"Pops Nb Llc","Litigator":"No","Mailing Address":"1717 W Loop S #1700","Mailing Unit #":"1700","Mailing City":"Houston","Mailing State":"TX","Mailing Zip":"77027","Mailing Zip+4":"3004","Mailing Carrier Route":"C041","Mailing FIPS":"48201","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"101300","Lot Size Sqft":"261360","Year Built":"1980","Effective Year Built":"2018","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"4810630","Assessed Land Value":"1568490","Assessed Improvement Value":"3242140","Improvement to Tax Value %":"0.674","Last Sale Date":"2022-06-14","Last Sale Recording Date":"2022-06-14","Last Sale Amount":"18000000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"POPS NB LLC","Loan 1 Date":"2022-06-14","Loan 1 Balance":"13500000","Loan 1 Type":"New Conventional","Loan 1 Lender":"ARBOR REALTY SR INC","Loan 1 Rate":"4.35","Loan 2 Date":"2024-06-03","Loan 2 Balance":"825000","Loan 2 Type":"New Conventional","Loan 2 Lender":"ARBOR REALTY SR INC","Loan 2 Rate":"8.0","Total Open Loans":"2","Est. Remaining balance of Open Loans":"14325000","Est. Value":"13623000","Est. Loan-to-Value":"105.154","Est. Equity":"-702000","Est. Total Monthly Payments":"69477.84","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"2501 Common St","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"6028","Carrier Route":"C016","County":"Comal","FIPS":"48091","APN":"69519","Phone 1":"4158338000","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"4158338035","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Owner Occupied":"No","Owner 1 Last Name":"Prometheus Real Estate Group I","Litigator":"No","Mailing Address":"1900 Powell St #400","Mailing Unit #":"400","Mailing City":"Emeryville","Mailing State":"CA","Mailing Zip":"94608","Mailing Zip+4":"2028","Mailing Carrier Route":"C023","Mailing FIPS":"06001","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"272700","Lot Size Sqft":"1001880","Year Built":"2014","Effective Year Built":"2014","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"3","Total Assessed Value":"30219830","Assessed Land Value":"5014725","Assessed Improvement Value":"25205105","Improvement to Tax Value %":"0.834","Last Sale Date":"2022-10-19","Last Sale Recording Date":"2022-10-20","Last Sale Amount":"81900000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"PROMETHEUS REAL ESTATE GROUP INC","Loan 1 Date":"2022-10-19","Loan 1 Balance":"53000000","Loan 1 Type":"New Conventional","Loan 1 Lender":"METROPOLITAN LIFE INSURANCE CO","Loan 1 Rate":"5.45","Total Open Loans":"1","Est. Remaining balance of Open Loans":"53000000","Est. Value":"58000000","Est. Loan-to-Value":"91.379","Est. Equity":"5000000","Est. Total Monthly Payments":"300905.36","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"1025 Post Rd","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"6451","Carrier Route":"C016","County":"Comal","FIPS":"48091","APN":"71939","Phone 1":"4154946472","Phone 1 Type":"Landline","Owner Occupied":"No","Owner 1 Last Name":"Everthriving Real Estate Inves","Litigator":"No","Mailing Address":"862 Rorke Way","Mailing City":"Palo Alto","Mailing State":"CA","Mailing Zip":"94303","Mailing Zip+4":"4409","Mailing Carrier Route":"C057","Mailing FIPS":"06085","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"27224","Lot Size Sqft":"175547","Year Built":"1986","Effective Year Built":"1986","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"4204390","Assessed Land Value":"807050","Assessed Improvement Value":"3397340","Improvement to Tax Value %":"0.808","Last Sale Date":"2005-08-01","Last Sale Recording Date":"2005-08-08","Last Sale Amount":"1500000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"EVERTHRIVING REAL ESTATE INVESTMENTS LLC","Total Open Loans":"0","Est. Remaining balance of Open Loans":"0","Est. Value":"3194000","Est. Loan-to-Value":"0","Est. Equity":"3194000","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"155 Dunning Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"5474","Carrier Route":"C003","County":"Comal","FIPS":"48091","APN":"67048","Phone 1":"2818553770","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"2815742201","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Owner Occupied":"No","Owner 1 Last Name":"Cornerstone Portfolio Llc","Litigator":"No","Mailing Address":"7718 Wood Hollow Dr #140","Mailing Unit #":"140","Mailing City":"Austin","Mailing State":"TX","Mailing Zip":"78731","Mailing Zip+4":"2977","Mailing Carrier Route":"C044","Mailing FIPS":"48453","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"121400","Lot Size Sqft":"287636","Year Built":"1983","Effective Year Built":"1983","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"6615310","Assessed Land Value":"1723855","Assessed Improvement Value":"4891455","Improvement to Tax Value %":"0.740","Last Sale Date":"2023-01-23","Last Sale Recording Date":"2023-01-26","Last Sale Amount":"14200000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"CORNERSTONE PORTFOLIO LLC","Loan 1 Date":"2023-01-23","Loan 1 Balance":"10650000","Loan 1 Type":"New Conventional","Loan 1 Lender":"ARBOR REALTY SR INC","Loan 1 Rate":"5.78","Total Open Loans":"1","Est. Remaining balance of Open Loans":"10650000","Est. Value":"9182000","Est. Loan-to-Value":"115.991","Est. Equity":"-1468000","Est. Total Monthly Payments":"51480.24","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"451 Suttles Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"4709","Carrier Route":"C003","County":"Comal","FIPS":"48091","APN":"38260","Phone 1":"2818553770","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"2815742201","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Owner Occupied":"No","Owner 1 Last Name":"Cornerstone Portfolio Llc","Litigator":"No","Mailing Address":"7718 Wood Hollow Dr #140","Mailing Unit #":"140","Mailing City":"Austin","Mailing State":"TX","Mailing Zip":"78731","Mailing Zip+4":"2977","Mailing Carrier Route":"C044","Mailing FIPS":"48453","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"53400","Lot Size Sqft":"112385","Year Built":"1967","Effective Year Built":"1967","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"2700000","Assessed Land Value":"672810","Assessed Improvement Value":"2027190","Improvement to Tax Value %":"0.751","Last Sale Date":"2023-01-23","Last Sale Recording Date":"2023-01-26","Last Sale Amount":"5600000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"CORNERSTONE PORTFOLIO LLC","Loan 1 Date":"2023-01-23","Loan 1 Balance":"10650000","Loan 1 Type":"New Conventional","Loan 1 Lender":"ARBOR REALTY SR INC","Loan 1 Rate":"5.78","Total Open Loans":"1","Est. Remaining balance of Open Loans":"10650000","Est. Value":"4049000","Est. Loan-to-Value":"263.03","Est. Equity":"-6601000","Est. Total Monthly Payments":"51480.24","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"350 N Walnut Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"5007","Carrier Route":"C003","County":"Comal","FIPS":"48091","APN":"67022","Phone 1":"9179730965","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"9175220143","Phone 2 Type":"Cell","Phone 3":"9174217700","Phone 3 Type":"Landline","Phone 3 DNC":"DNC","Email 1":"sswaminathan@manorgroupllc.com","Email 2":"sgswaminathan@gmail.com","Owner Occupied":"No","Owner 1 Last Name":"Manor 350 Llc","Litigator":"No","Mailing Address":"521 Fifth Ave","Mailing City":"New York","Mailing State":"NY","Mailing Zip":"10175","Mailing Zip+4":"0099","Mailing Carrier Route":"C010","Mailing FIPS":"36061","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"62360","Lot Size Sqft":"96268","Year Built":"1984","Effective Year Built":"1984","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"3","Total Assessed Value":"4019420","Assessed Land Value":"576360","Assessed Improvement Value":"3443060","Improvement to Tax Value %":"0.857","Last Sale Date":"2023-05-09","Last Sale Recording Date":"2023-05-10","Last Sale Amount":"8500000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"MANOR 350 LLC","Loan 1 Date":"2024-12-18","Loan 1 Balance":"6500000","Loan 1 Type":"New Conventional","Loan 1 Lender":"ARBOR REALTY SR INC","Loan 1 Rate":"6.27","Total Open Loans":"1","Est. Remaining balance of Open Loans":"6500000","Est. Value":"4724000","Est. Loan-to-Value":"137.609","Est. Equity":"-1776000","Est. Total Monthly Payments":"40356.08","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"1455 Gruene Rd","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"2843","Carrier Route":"C014","County":"Comal","FIPS":"48091","APN":"72207","Phone 1":"5122929226","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"5128631038","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Email 1":"nsmith@tpeg.com","Owner Occupied":"No","Owner 1 Last Name":"Tpeg Gruene Llc","Litigator":"No","Mailing Address":"3838 Oak Lawn Ave #1500","Mailing Unit #":"1500","Mailing City":"Dallas","Mailing State":"TX","Mailing Zip":"75219","Mailing Zip+4":"4513","Mailing Carrier Route":"C044","Mailing FIPS":"48113","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"118656","Lot Size Sqft":"557424","Year Built":"1979","Effective Year Built":"2020","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"11267560","Assessed Land Value":"3346560","Assessed Improvement Value":"7921000","Improvement to Tax Value %":"0.703","Last Sale Date":"2023-07-28","Last Sale Recording Date":"2023-07-31","Last Sale Amount":"21700000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"TPEG GRUENE LLC","Loan 1 Date":"2023-07-28","Loan 1 Balance":"15000000","Loan 1 Type":"New Conventional","Loan 1 Lender":"VERITEX COMMUNITY BANK","Loan 1 Rate":"7.5","Total Open Loans":"1","Est. Remaining balance of Open Loans":"15000000","Est. Value":"15909000","Est. Loan-to-Value":"94.285","Est. Equity":"909000","Est. Total Monthly Payments":"104895.05","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"2751 Generations Dr","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"7009","Carrier Route":"C043","County":"Comal","FIPS":"48091","APN":"72204","Phone 1":"9563605445","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"9567233234","Phone 2 Type":"Cell","Phone 3":"9563609050","Phone 3 Type":"Landline","Phone 3 DNC":"DNC","Email 1":"cnavar@pacificacres.com","Email 2":"pvargas@pacificacres.com","Owner Occupied":"No","Owner 1 Last Name":"Arbor Realty Sr Inc","Litigator":"No","Mailing Address":"333 Earle Ovington Blvd #900","Mailing Unit #":"900","Mailing City":"Uniondale","Mailing State":"NY","Mailing Zip":"11553","Mailing Zip+4":"3651","Mailing Carrier Route":"C008","Mailing FIPS":"36059","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"313600","Lot Size Sqft":"956952","Year Built":"2023","Effective Year Built":"2023","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"3","Total Assessed Value":"25950000","Assessed Land Value":"4190000","Assessed Improvement Value":"21760000","Improvement to Tax Value %":"0.839","Last Sale Date":"2023-12-28","Last Sale Recording Date":"2024-01-03","Last Sale Amount":"55000000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"GENERATIONS HOLDINGS LLC","Loan 1 Date":"2020-06-30","Loan 1 Balance":"33000000","Loan 1 Type":"New Conventional","Loan 1 Lender":"ARBOR REALTY SR INC","Loan 1 Rate":"3.37","Total Open Loans":"1","Est. Remaining balance of Open Loans":"33000000","Est. Value":"51000000","Est. Loan-to-Value":"64.706","Est. Equity":"18000000","Est. Total Monthly Payments":"145864.28","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"1600 Gruene Rd","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"2843","Carrier Route":"C014","County":"Comal","FIPS":"48091","APN":"72200","Phone 1":"4697979388","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"4697979362","Phone 2 Type":"Cell","Phone 3":"4697979363","Phone 3 Type":"Cell","Phone 3 DNC":"DNC","Phone 4":"4697979365","Phone 4 Type":"Cell","Phone 4 DNC":"DNC","Email 1":"tsmith@essex.com","Owner Occupied":"No","Owner 1 Last Name":"Essex Property Trust Inc","Litigator":"No","Mailing Address":"1100 Park Pl #200","Mailing Unit #":"200","Mailing City":"San Mateo","Mailing State":"CA","Mailing Zip":"94403","Mailing Zip+4":"1500","Mailing Carrier Route":"C030","Mailing FIPS":"06081","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"265640","Lot Size Sqft":"979228","Year Built":"2017","Effective Year Built":"2017","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"3","Total Assessed Value":"28823970","Assessed Land Value":"5872530","Assessed Improvement Value":"22951440","Improvement to Tax Value %":"0.796","Last Sale Date":"2024-03-08","Last Sale Recording Date":"2024-03-11","Last Sale Amount":"67000000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"1600 GRUENE RD LLC","Loan 1 Date":"2024-03-08","Loan 1 Balance":"40500000","Loan 1 Type":"New Conventional","Loan 1 Lender":"AGENCY","Loan 1 Rate":"5.89","Total Open Loans":"1","Est. Remaining balance of Open Loans":"40500000","Est. Value":"57000000","Est. Loan-to-Value":"71.053","Est. Equity":"16500000","Est. Total Monthly Payments":"239799.64","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"550 Suttles Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"4711","Carrier Route":"C003","County":"Comal","FIPS":"48091","APN":"38262","Phone 1":"5122929226","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"5128631038","Phone 2 Type":"Landline","Phone 2 DNC":"DNC","Email 1":"nsmith@tpeg.com","Owner Occupied":"No","Owner 1 Last Name":"Tpeg Suttles Llc","Litigator":"No","Mailing Address":"3838 Oak Lawn Ave #1500","Mailing Unit #":"1500","Mailing City":"Dallas","Mailing State":"TX","Mailing Zip":"75219","Mailing Zip+4":"4513","Mailing Carrier Route":"C044","Mailing FIPS":"48113","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"76600","Lot Size Sqft":"314028","Year Built":"1971","Effective Year Built":"2020","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"6218550","Assessed Land Value":"1882950","Assessed Improvement Value":"4335600","Improvement to Tax Value %":"0.697","Last Sale Date":"2024-04-22","Last Sale Recording Date":"2024-04-25","Last Sale Amount":"11000000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"TPEG SUTTLES LLC","Loan 1 Date":"2024-04-22","Loan 1 Balance":"8300000","Loan 1 Type":"New Conventional","Loan 1 Lender":"VERITEX COMMUNITY BANK","Loan 1 Rate":"7.5","Total Open Loans":"1","Est. Remaining balance of Open Loans":"8300000","Est. Value":"8167000","Est. Loan-to-Value":"101.629","Est. Equity":"-133000","Est. Total Monthly Payments":"58116.24","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"531 Suttles Ave","City":"New Braunfels","State":"TX","Zip":"78130","Zip+4":"4709","Carrier Route":"C003","County":"Comal","FIPS":"48091","APN":"38261","Phone 1":"3612727455","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"3612727485","Phone 2 Type":"Cell","Phone 3":"3618146868","Phone 3 Type":"Landline","Phone 3 DNC":"DNC","Email 1":"mbaker@bakerimmobilier.com","Owner Occupied":"No","Owner 1 Last Name":"Suttles Street Apt Llc","Litigator":"No","Mailing Address":"1111 S Ocean Blvd #211","Mailing Unit #":"211","Mailing City":"Manalapan","Mailing State":"FL","Mailing Zip":"33462","Mailing Zip+4":"6036","Mailing Carrier Route":"R002","Mailing FIPS":"12099","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"21192","Lot Size Sqft":"99752","Year Built":"1977","Effective Year Built":"1977","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"2104990","Assessed Land Value":"597810","Assessed Improvement Value":"1507180","Improvement to Tax Value %":"0.716","Last Sale Date":"2024-04-23","Last Sale Recording Date":"2024-04-30","Last Sale Amount":"2967879 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"SUTTLES STREET APT LLC","Loan 1 Date":"2024-04-23","Loan 1 Balance":"2231000","Loan 1 Type":"New Conventional","Loan 1 Lender":"INCOMMONS BANK NA","Loan 1 Rate":"8.0","Total Open Loans":"1","Est. Remaining balance of Open Loans":"2231000","Est. Value":"2830000","Est. Loan-to-Value":"78.833","Est. Equity":"599000","Est. Total Monthly Payments":"16376.06","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"},{"Address":"101 Canyon Lake Dr","City":"Canyon Lake","State":"TX","Zip":"78133","Zip+4":"4603","Carrier Route":"R045","County":"Comal","FIPS":"48091","APN":"38263","Phone 1":"7136781700","Phone 1 Type":"Cell","Phone 1 DNC":"DNC","Phone 2":"7136781705","Phone 2 Type":"Cell","Phone 3":"7139784899","Phone 3 Type":"Landline","Phone 3 DNC":"DNC","Owner Occupied":"No","Owner 1 Last Name":"Canyon Lake Apts Inc","Litigator":"No","Mailing Address":"1001 Mckinney St #500","Mailing Unit #":"500","Mailing City":"Houston","Mailing State":"TX","Mailing Zip":"77002","Mailing Zip+4":"6419","Mailing Carrier Route":"C038","Mailing FIPS":"48201","Do Not Mail":"No","Property Class":"RESIDENTIAL","Property Type":"Apartments (generic)","Building Sqft":"46900","Lot Size Sqft":"231912","Year Built":"1983","Effective Year Built":"2024","Pool Type":"Pool (yes)","Vacant":"No","HOA Present":"No","Number of Stories":"2","Total Assessed Value":"5048490","Assessed Land Value":"809090","Assessed Improvement Value":"4239400","Improvement to Tax Value %":"0.840","Last Sale Date":"2024-09-16","Last Sale Recording Date":"2024-09-17","Last Sale Amount":"7150000 Est.","Last Cash Buyer":"No","Last Sale Buyer Name 1":"CANYON LAKE APTS INC","Loan 1 Date":"2024-09-16","Loan 1 Balance":"5600000","Loan 1 Type":"New Conventional","Loan 1 Lender":"INCOMMONS BANK NA","Loan 1 Rate":"7.25","Total Open Loans":"1","Est. Remaining balance of Open Loans":"5600000","Est. Value":"5415000","Est. Loan-to-Value":"103.399","Est. Equity":"-185000","Est. Total Monthly Payments":"38193.52","Marketing Lists":"1","Date Added to List":"2026-03-07 21:28:02.910892","Method of Add":"Manual"}];
+// State
+const STAGES = ['New Lead','Contacted','Interested','Under Analysis','Offer Sent','Closed','Dead'];
+const STAGE_COLORS = { 'New Lead':'#4f6ef7','Contacted':'#f0a832','Interested':'#22c98b','Under Analysis':'#9b6cf7','Offer Sent':'#2acfe0','Closed':'#22c98b','Dead':'#555d7a' };
+
+let props = RAW_PROPS.map((p, i) => ({ ...p, _id: i, _stage: 'New Lead', _score: calcScore(p), _notes: '' }));
+let filteredProps = [...props];
+let sortField = null, sortDir = 'asc';
+let azChartInst = null, cfProjInst = null, cityChartInst = null, equityPieInst = null, yearChartInst = null;
+
+function n(v) { return parseFloat(String(v||'0').replace(/[^0-9.\-]/g,'')) || 0; }
+function fmtD(v) { return '$' + Math.round(v).toLocaleString(); }
+function fmtK(v) {
+  const a = Math.abs(v);
+  if (a >= 1e6) return (v<0?'-':'') + '$' + (a/1e6).toFixed(1) + 'M';
+  if (a >= 1e3) return (v<0?'-':'') + '$' + (a/1e3).toFixed(0) + 'K';
+  return fmtD(v);
+}
+function calcScore(p) {
+  let s = 50;
+  const eq = n(p['Est. Equity']), loans = n(p['Total Open Loans']), ltv = n(p['Est. Loan-to-Value']);
+  if (loans===0) s+=20;
+  if (eq>1000000) s+=15; else if (eq>500000) s+=10; else if (eq<0) s-=20;
+  if (ltv===0) s+=10; else if (ltv<50) s+=5; else if (ltv>90) s-=10;
+  const yr = n(p['Year Built']);
+  if (yr>2000) s+=5; else if (yr<1970) s-=5;
+  return Math.min(100, Math.max(0, s));
+}
+function scoreColor(s) { return s>=75?'var(--green)':s>=55?'var(--amber)':'var(--red)'; }
+function stageBadge(stage) {
+  const c = STAGE_COLORS[stage]||'var(--text2)';
+  return `<span style="background:${c}22;color:${c};padding:2px 8px;border-radius:20px;font-size:11px;">${stage}</span>`;
+}
+function equityBadge(p) {
+  const eq = n(p['Est. Equity']), loans = n(p['Total Open Loans']);
+  if (loans===0&&eq>0) return '<span class="badge badge-green">Free & Clear</span>';
+  if (eq>500000) return '<span class="badge badge-blue">High Equity</span>';
+  if (eq<0) return '<span class="badge badge-red">Underwater</span>';
+  return '<span class="badge badge-gray">Active Loan</span>';
+}
+function isMobile() { return window.innerWidth <= 600; }
+
+// Sidebar
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('mobile-open');
+  document.getElementById('sidebar-overlay').classList.add('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('sidebar-overlay').classList.remove('show');
+}
+
+// Navigation
+function showPage(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  // Sidebar nav
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navMap = { dashboard:0, properties:1, pipeline:2, analyzer:3, cashflow:4, texts:5, contacts:6 };
+  if (navMap[name]!==undefined) document.querySelectorAll('.nav-item')[navMap[name]].classList.add('active');
+  // Bottom nav
+  document.querySelectorAll('.bnav-item').forEach(b => b.classList.remove('active'));
+  const bn = document.getElementById('bn-' + name);
+  if (bn) bn.classList.add('active');
+  // Title
+  const titles = { dashboard:'Dashboard', properties:'Properties', pipeline:'Pipeline', analyzer:'Deal Analyzer', cashflow:'Cash Flow', contacts:'Owner CRM', texts:'Texts' };
+  document.getElementById('page-title').textContent = titles[name] || name;
+  closeSidebar();
+  // Render
+  if (name==='dashboard') renderDashboard();
+  if (name==='properties') renderPropTable();
+  if (name==='pipeline') renderPipeline();
+  if (name==='cashflow') renderCashflow();
+  if (name==='contacts') renderContacts();
+  if (name==='analyzer') { loadAnalyzerDropdown(); calcDeal(); }
+  if (name==='texts') renderTextsPage();
+}
+
+// ===================== DASHBOARD =====================
+function renderDashboard() {
+  const totalVal = props.reduce((s,p)=>s+n(p['Est. Value']),0);
+  const totalLoanBal = props.reduce((s,p)=>s+n(p['Est. Remaining balance of Open Loans']),0);
+  const openLoans = props.filter(p=>n(p['Total Open Loans'])>0).length;
+  const freeClear = props.filter(p=>n(p['Total Open Loans'])===0).length;
+  const highEq = props.filter(p=>n(p['Est. Equity'])>500000).length;
+  document.getElementById('stat-val').textContent = fmtK(totalVal);
+  document.getElementById('stat-loans').textContent = openLoans;
+  document.getElementById('stat-loan-bal').textContent = fmtK(totalLoanBal) + ' outstanding';
+  document.getElementById('stat-free').textContent = freeClear;
+  document.getElementById('stat-highequity').textContent = highEq;
+  document.getElementById('owner-badge').textContent = [...new Set(props.map(p=>p['Owner 1 Last Name']).filter(Boolean))].length;
+
+  // City chart
+  const cities = {};
+  props.forEach(p => { const c = p.City||'Other'; cities[c]=(cities[c]||0)+1; });
+  if (cityChartInst) cityChartInst.destroy();
+  cityChartInst = new Chart(document.getElementById('cityChart'), {
+    type:'bar', data:{ labels:Object.keys(cities), datasets:[{ label:'Properties', data:Object.values(cities), backgroundColor:['#4f6ef7','#22c98b','#f0a832'], borderRadius:5 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false},ticks:{color:'#8b91a8'}}, y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#8b91a8'}} } }
+  });
+
+  // Equity pie
+  const segs = {
+    'Free & Clear': props.filter(p=>n(p['Total Open Loans'])===0&&n(p['Est. Equity'])>0).length,
+    'High Equity': props.filter(p=>n(p['Total Open Loans'])>0&&n(p['Est. Equity'])>500000).length,
+    'Low/Mod': props.filter(p=>n(p['Total Open Loans'])>0&&n(p['Est. Equity'])>=0&&n(p['Est. Equity'])<=500000).length,
+    'Underwater': props.filter(p=>n(p['Est. Equity'])<0).length
+  };
+  if (equityPieInst) equityPieInst.destroy();
+  equityPieInst = new Chart(document.getElementById('equityPieChart'), {
+    type:'doughnut', data:{ labels:Object.keys(segs), datasets:[{ data:Object.values(segs), backgroundColor:['#22c98b','#4f6ef7','#f0a832','#e85454'], borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#8b91a8', font:{size:11}, padding:10 } } } }
+  });
+
+  // Year chart
+  const decades = {};
+  props.forEach(p=>{ const yr=n(p['Year Built']); if(yr>0){ const d=Math.floor(yr/10)*10; decades[d]=(decades[d]||0)+1; } });
+  const dkeys = Object.keys(decades).sort((a,b)=>a-b);
+  if (yearChartInst) yearChartInst.destroy();
+  yearChartInst = new Chart(document.getElementById('yearChart'), {
+    type:'bar', data:{ labels:dkeys.map(d=>d+'s'), datasets:[{ data:dkeys.map(d=>decades[d]), backgroundColor:'#9b6cf7', borderRadius:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false},ticks:{color:'#8b91a8',font:{size:11}}}, y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#8b91a8',stepSize:1}} } }
+  });
+
+  // Top targets
+  const targets = [...props].filter(p=>n(p['Total Open Loans'])===0&&n(p['Est. Equity'])>0).sort((a,b)=>n(b['Est. Equity'])-n(a['Est. Equity'])).slice(0,5);
+  document.getElementById('top-targets').innerHTML = targets.map(p=>`
+    <div class="activity-item" onclick="openPanel(${p._id})" style="cursor:pointer;">
+      <div class="activity-dot" style="background:var(--green);"></div>
+      <div class="activity-content">
+        <div class="activity-title">${p.Address}, ${p.City}</div>
+        <div class="activity-time">${p['Owner 1 Last Name']||'—'} · <span style="color:var(--green);">${fmtK(n(p['Est. Equity']))}</span> equity</div>
+      </div>
+    </div>`).join('');
+
+  // Recent table
+  const recent = [...props].slice(0, 15);
+  document.getElementById('recent-table').innerHTML = recent.map(p=>`
+    <tr onclick="openPanel(${p._id})">
+      <td><div class="td-addr">${p.Address}</div></td>
+      <td>${p.City}</td>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--text2);">${p['Owner 1 Last Name']||'—'}</td>
+      <td>${p['Est. Value']?fmtK(n(p['Est. Value'])):'—'}</td>
+      <td style="color:${n(p['Est. Equity'])>=0?'var(--green)':'var(--red)'};">${p['Est. Equity']?fmtK(n(p['Est. Equity'])):'—'}</td>
+      <td>${p['Total Open Loans']||'0'}</td>
+      <td>${equityBadge(p)}</td>
+    </tr>`).join('');
+
+  // Mobile dashboard cards
+  document.getElementById('dashboard-cards').innerHTML = recent.map(p=>`
+    <div class="prop-card" onclick="openPanel(${p._id})">
+      <div class="prop-card-header">
+        <div><div class="prop-card-addr">${p.Address}</div><div class="prop-card-city">${p.City}, TX</div></div>
+        ${equityBadge(p)}
+      </div>
+      <div class="prop-card-row"><span class="prop-card-key">Owner</span><span class="prop-card-val">${(p['Owner 1 Last Name']||'—').substring(0,25)}</span></div>
+      <div class="prop-card-row"><span class="prop-card-key">Est. Value</span><span class="prop-card-val">${p['Est. Value']?fmtK(n(p['Est. Value'])):'—'}</span></div>
+      <div class="prop-card-row"><span class="prop-card-key">Equity</span><span class="prop-card-val" style="color:${n(p['Est. Equity'])>=0?'var(--green)':'var(--red)'};">${p['Est. Equity']?fmtK(n(p['Est. Equity'])):'—'}</span></div>
+    </div>`).join('');
+}
+
+// ===================== PROPERTIES =====================
+function applyFilters() {
+  const city = document.getElementById('filter-city').value;
+  const equity = document.getElementById('filter-equity').value;
+  const loan = document.getElementById('filter-loan').value;
+  const stage = document.getElementById('filter-stage').value;
+  const search = document.getElementById('global-search').value.toLowerCase();
+  filteredProps = props.filter(p => {
+    if (city && p.City!==city) return false;
+    if (equity==='free' && !(n(p['Total Open Loans'])===0&&n(p['Est. Equity'])>0)) return false;
+    if (equity==='high' && n(p['Est. Equity'])<=500000) return false;
+    if (equity==='low' && n(p['Est. Equity'])>=0) return false;
+    if (loan==='yes' && n(p['Total Open Loans'])===0) return false;
+    if (loan==='no' && n(p['Total Open Loans'])>0) return false;
+    if (stage && p._stage!==stage) return false;
+    if (search) { const h=(p.Address+' '+p.City+' '+(p['Owner 1 Last Name']||'')).toLowerCase(); if(!h.includes(search)) return false; }
+    return true;
+  });
+  document.getElementById('filter-count').textContent = `${filteredProps.length} of ${props.length}`;
+  renderPropTable();
+}
+function clearFilters() {
+  ['filter-city','filter-equity','filter-loan','filter-stage'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('global-search').value=''; filteredProps=[...props];
+  document.getElementById('filter-count').textContent=''; renderPropTable();
+}
+function handleSearch() { applyFilters(); }
+
+function sortTable(field) {
+  if (sortField===field) sortDir=sortDir==='asc'?'desc':'asc';
+  else { sortField=field; sortDir='asc'; }
+  const numFields = ['Building Sqft','Year Built','Est. Value','Est. Equity','Loan 1 Balance','_score'];
+  filteredProps.sort((a,b)=>{
+    const av=numFields.includes(field)?n(a[field]):a[field]||'';
+    const bv=numFields.includes(field)?n(b[field]):b[field]||'';
+    return sortDir==='asc'?(av>bv?1:-1):(av<bv?1:-1);
+  });
+  renderPropTable();
+}
+
+function renderPropTable() {
+  // Desktop table
+  const tbody = document.getElementById('prop-table');
+  if (!filteredProps.length) { tbody.innerHTML='<tr><td colspan="10" class="empty-state">No properties match</td></tr>'; }
+  else {
+    tbody.innerHTML = filteredProps.map(p=>{
+      const eq=n(p['Est. Equity']), val=n(p['Est. Value']), lb=n(p['Loan 1 Balance']);
+      return `<tr onclick="openPanel(${p._id})">
+        <td><div class="td-addr">${p.Address}</div></td>
+        <td>${p.City}</td>
+        <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--text2);">${p['Owner 1 Last Name']||'—'}</td>
+        <td>${p['Building Sqft']?n(p['Building Sqft']).toLocaleString():'—'}</td>
+        <td>${p['Year Built']||'—'}</td>
+        <td>${val?fmtK(val):'—'}</td>
+        <td style="color:${eq>=0?'var(--green)':'var(--red)'};">${p['Est. Equity']?fmtK(eq):'—'}</td>
+        <td>${lb?fmtK(lb):'<span style="color:var(--text3)">None</span>'}</td>
+        <td>${stageBadge(p._stage)}</td>
+        <td><div style="display:flex;align-items:center;gap:6px;"><span style="font-size:12px;font-weight:500;color:${scoreColor(p._score)};">${p._score}</span><div class="score-bar" style="width:40px;"><div class="score-fill" style="width:${p._score}%;background:${scoreColor(p._score)};"></div></div></div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Mobile cards
+  document.getElementById('prop-cards').innerHTML = filteredProps.map(p=>{
+    const eq=n(p['Est. Equity']);
+    return `<div class="prop-card" onclick="openPanel(${p._id})">
+      <div class="prop-card-header">
+        <div><div class="prop-card-addr">${p.Address}</div><div class="prop-card-city">${p.City} · ${p['Year Built']||'—'} · ${p['Building Sqft']?n(p['Building Sqft']).toLocaleString():''} sqft</div></div>
+        <div style="text-align:right;">${equityBadge(p)}<div style="margin-top:4px;">${stageBadge(p._stage)}</div></div>
+      </div>
+      <div class="prop-card-row"><span class="prop-card-key">Owner</span><span class="prop-card-val">${(p['Owner 1 Last Name']||'—').substring(0,22)}</span></div>
+      <div class="prop-card-row"><span class="prop-card-key">Est. Value</span><span class="prop-card-val">${p['Est. Value']?fmtK(n(p['Est. Value'])):'—'}</span></div>
+      <div class="prop-card-row"><span class="prop-card-key">Equity</span><span class="prop-card-val" style="color:${eq>=0?'var(--green)':'var(--red)'};">${p['Est. Equity']?fmtK(eq):'—'}</span></div>
+      <div class="prop-card-row"><span class="prop-card-key">Loan Balance</span><span class="prop-card-val">${p['Loan 1 Balance']?fmtK(n(p['Loan 1 Balance'])):'None'}</span></div>
+      <div class="prop-card-row"><span class="prop-card-key">Score</span><span class="prop-card-val" style="color:${scoreColor(p._score)};">${p._score}/100</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ===================== PIPELINE =====================
+function renderPipeline() {
+  document.getElementById('pipeline-board').innerHTML = STAGES.map(stage=>{
+    const sp = props.filter(p=>p._stage===stage);
+    const c = STAGE_COLORS[stage];
+    return `<div class="stage">
+      <div class="stage-header"><div class="stage-name" style="color:${c};">${stage}</div><div class="stage-count">${sp.length}</div></div>
+      <div class="stage-body">
+        ${sp.map(p=>`<div class="deal-card" onclick="openPanel(${p._id})">
+          <div class="deal-addr">${p.Address}</div>
+          <div class="deal-meta">${p.City} · ${p['Building Sqft']?n(p['Building Sqft']).toLocaleString()+' sqft':''}</div>
+          <div class="deal-footer">
+            <span style="font-size:12px;color:${n(p['Est. Equity'])>=0?'var(--green)':'var(--red)'};">${p['Est. Equity']?fmtK(n(p['Est. Equity'])):'—'}</span>
+            <span style="font-size:11px;color:var(--text3);">Score: ${p._score}</span>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===================== PANEL =====================
+function openPanel(id) {
+  const p = props.find(x=>x._id===id);
+  if (!p) return;
+  document.getElementById('panel-title').textContent = p.Address + ', ' + p.City;
+  document.getElementById('panel-sub').textContent = (p['Owner 1 Last Name']||'') + (p['Property Type']?' · '+p['Property Type']:'');
+  
+  const phones = [1,2,3,4,5].map(i=>p[`Phone ${i}`]?`<span class="contact-chip">☎ ${p[`Phone ${i}`]} <span style="font-size:10px;color:var(--text3);">${p[`Phone ${i} Type`]||''}</span>${p[`Phone ${i} DNC`]==='DNC'?'<span class="dnc"> DNC</span>':''}</span>`:'').filter(Boolean).join('');
+  const emails = [1,2,3,4].map(i=>p[`Email ${i}`]?`<span class="contact-chip">✉ ${p[`Email ${i}`]}</span>`:'').filter(Boolean).join('');
+  const eq=n(p['Est. Equity']), val=n(p['Est. Value']), lb=n(p['Loan 1 Balance']), ltv=n(p['Est. Loan-to-Value']);
+
+  document.getElementById('panel-body').innerHTML = `
+    <div style="margin-bottom:14px;display:flex;gap:6px;flex-wrap:wrap;">${equityBadge(p)}${n(p['Total Open Loans'])>0?`<span class="badge badge-amber">${p['Total Open Loans']} loan(s)</span>`:''}${p['Pool Type']?'<span class="badge badge-blue">Pool</span>':''}${p['Vacant']==='Yes'?'<span class="badge badge-red">Vacant</span>':''}</div>
+
+    <div class="sec-header">Pipeline Stage</div>
+    <select style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;font-size:16px;color:var(--text);margin-bottom:14px;font-family:var(--font);-webkit-appearance:none;" onchange="updateStage(${id},this.value)">
+      ${STAGES.map(s=>`<option ${p._stage===s?'selected':''}>${s}</option>`).join('')}
+    </select>
+
+    <div class="sec-header">Property</div>
+    <div class="info-row"><span class="info-key">Address</span><span class="info-val">${p.Address}, ${p.City} TX ${p.Zip}</span></div>
+    <div class="info-row"><span class="info-key">APN</span><span class="info-val">${p.APN||'—'}</span></div>
+    <div class="info-row"><span class="info-key">Type</span><span class="info-val">${p['Property Type']||'—'}</span></div>
+    <div class="info-row"><span class="info-key">Size</span><span class="info-val">${p['Building Sqft']?n(p['Building Sqft']).toLocaleString()+' sqft':'—'}</span></div>
+    <div class="info-row"><span class="info-key">Lot</span><span class="info-val">${p['Lot Size Sqft']?n(p['Lot Size Sqft']).toLocaleString()+' sqft':'—'}</span></div>
+    <div class="info-row"><span class="info-key">Year Built</span><span class="info-val">${p['Year Built']||'—'}${p['Effective Year Built']&&p['Effective Year Built']!==p['Year Built']?' (eff. '+p['Effective Year Built']+')'	:''}</span></div>
+    <div class="info-row"><span class="info-key">Stories</span><span class="info-val">${p['Number of Stories']||'—'}</span></div>
+    <div class="info-row"><span class="info-key">Beds/Baths</span><span class="info-val">${p['Bedrooms']||'—'} BR / ${p['Total Bathrooms']||'—'} BA</span></div>
+
+    <div class="sec-header" style="margin-top:14px;">Financials</div>
+    <div class="info-row"><span class="info-key">Est. Value</span><span class="info-val">${val?fmtK(val):'—'}</span></div>
+    <div class="info-row"><span class="info-key">Assessed Value</span><span class="info-val">${p['Total Assessed Value']?fmtK(n(p['Total Assessed Value'])):'—'}</span></div>
+    <div class="info-row"><span class="info-key">Est. Equity</span><span class="info-val" style="color:${eq>=0?'var(--green)':'var(--red)'};">${p['Est. Equity']?fmtK(eq):'—'}</span></div>
+    <div class="info-row"><span class="info-key">LTV</span><span class="info-val">${ltv?ltv.toFixed(1)+'%':'0%'}</span></div>
+    <div class="info-row"><span class="info-key">Last Sale</span><span class="info-val">${p['Last Sale Amount']||'—'} (${p['Last Sale Date']||'—'})</span></div>
+
+    ${n(p['Total Open Loans'])>0?`
+    <div class="sec-header" style="margin-top:14px;">Loan Info</div>
+    <div class="info-row"><span class="info-key">Balance</span><span class="info-val">${fmtK(n(p['Loan 1 Balance']))}</span></div>
+    <div class="info-row"><span class="info-key">Rate</span><span class="info-val">${p['Loan 1 Rate']}%</span></div>
+    <div class="info-row"><span class="info-key">Type</span><span class="info-val">${p['Loan 1 Type']||'—'}</span></div>
+    <div class="info-row"><span class="info-key">Lender</span><span class="info-val">${p['Loan 1 Lender']||'—'}</span></div>
+    <div class="info-row"><span class="info-key">Date</span><span class="info-val">${p['Loan 1 Date']||'—'}</span></div>
+    <div class="info-row"><span class="info-key">Monthly Pmt</span><span class="info-val">${p['Est. Total Monthly Payments']?'$'+parseFloat(p['Est. Total Monthly Payments']).toLocaleString(undefined,{maximumFractionDigits:0}):'—'}</span></div>
+    ${p['Loan 2 Balance']?`<div class="info-row"><span class="info-key">Loan 2</span><span class="info-val">${fmtK(n(p['Loan 2 Balance']))} @ ${p['Loan 2 Rate']}%</span></div>`:''}
+    `:''}
+
+    <div class="sec-header" style="margin-top:14px;">Owner & Contact</div>
+    <div class="info-row"><span class="info-key">Owner</span><span class="info-val">${p['Owner 1 Last Name']||'—'}</span></div>
+    <div class="info-row"><span class="info-key">Owner Occ.</span><span class="info-val">${p['Owner Occupied']||'—'}</span></div>
+    <div class="info-row"><span class="info-key">Mailing</span><span class="info-val">${p['Mailing Address']?p['Mailing Address']+', '+p['Mailing City']+' '+p['Mailing State']:'—'}</span></div>
+    <div style="margin-top:10px;flex-wrap:wrap;">${phones||'<span style="color:var(--text3);font-size:12px;">No phones on file</span>'}</div>
+    <div style="margin-top:6px;flex-wrap:wrap;">${emails||'<span style="color:var(--text3);font-size:12px;">No emails on file</span>'}</div>
+
+    <div class="sec-header" style="margin-top:14px;">Deal Score: <span style="color:${scoreColor(p._score)}">${p._score}/100</span></div>
+    <div class="score-bar" style="height:6px;margin-bottom:14px;"><div class="score-fill" style="width:${p._score}%;background:${scoreColor(p._score)};"></div></div>
+
+    <div class="sec-header">Notes</div>
+    <textarea style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;font-size:14px;color:var(--text);resize:vertical;min-height:80px;font-family:var(--font);" placeholder="Add notes…" onchange="updateNotes(${id},this.value)">${p._notes}</textarea>
+
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+      <button class="btn btn-primary" style="flex:1;font-size:14px;min-width:100px;" onclick="loadPropInAnalyzer(${id})">Analyze ↗</button>
+      <button class="btn" style="flex:1;font-size:14px;min-width:100px;background:var(--green);color:#fff;" onclick="closePanel();openSmsModal(${id})">💬 Text Owner</button>
+      <button class="btn btn-ghost" style="font-size:14px;" onclick="closePanel()">Close</button>
+    </div>
+  `;
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('panel-overlay').classList.add('show');
+}
+function closePanel() {
+  document.getElementById('detail-panel').classList.remove('open');
+  document.getElementById('panel-overlay').classList.remove('show');
+}
+function updateStage(id, stage) { const p=props.find(x=>x._id===id); if(p) p._stage=stage; }
+function updateNotes(id, notes) { const p=props.find(x=>x._id===id); if(p) p._notes=notes; }
+function loadPropInAnalyzer(id) { closePanel(); showPage('analyzer'); setTimeout(()=>{ document.getElementById('az-prop-select').value=id; loadPropForAnalysis(id); },100); }
+
+// ===================== ANALYZER =====================
+function loadAnalyzerDropdown() {
+  const sel = document.getElementById('az-prop-select');
+  if (sel.options.length > 1) return;
+  props.forEach(p=>{ const o=document.createElement('option'); o.value=p._id; o.textContent=p.Address+', '+p.City; sel.appendChild(o); });
+}
+function loadPropForAnalysis(id) {
+  if (!id) return;
+  const p = props.find(x=>x._id==id);
+  if (!p) return;
+  document.getElementById('az-addr').value=p.Address;
+  document.getElementById('az-city').value=p.City;
+  document.getElementById('az-price').value=n(p['Est. Value'])||n(p['Total Assessed Value'])||1000000;
+  document.getElementById('az-arv').value=n(p['Est. Value'])||1200000;
+  document.getElementById('az-sqft').value=n(p['Building Sqft'])||10000;
+  document.getElementById('az-year').value=p['Year Built']||1985;
+  document.getElementById('az-rent').value=Math.round(n(p['Building Sqft'])*1.1);
+  if (n(p['Loan 1 Balance'])>0) {
+    document.getElementById('az-down').value=Math.round(n(p['Est. Value'])*0.1);
+    document.getElementById('az-rate').value=p['Loan 1 Rate']||6.5;
+  }
+  document.getElementById('az-tax').value=Math.round(n(p['Total Assessed Value'])*0.025/12);
+  calcDeal();
+}
+function pmt(rate, nper, pv) {
+  if (rate===0) return pv/nper;
+  const r=rate/12;
+  return pv*r/(1-Math.pow(1+r,-nper));
+}
+function calcDeal() {
+  const price=n(document.getElementById('az-price').value);
+  const arv=n(document.getElementById('az-arv').value);
+  const grossRent=n(document.getElementById('az-rent').value);
+  const vacancy=n(document.getElementById('az-vac').value)/100;
+  const tax=n(document.getElementById('az-tax').value);
+  const ins=n(document.getElementById('az-ins').value);
+  const mgmt=n(document.getElementById('az-mgmt').value)/100;
+  const maint=n(document.getElementById('az-maint').value);
+  const capex=n(document.getElementById('az-capex').value);
+  const other=n(document.getElementById('az-other').value);
+  const down=n(document.getElementById('az-down').value);
+  const rate=n(document.getElementById('az-rate').value);
+  const amort=n(document.getElementById('az-amort').value);
+  const closing=n(document.getElementById('az-closing').value);
+
+  const egi=grossRent*(1-vacancy);
+  const mgmtAmt=egi*mgmt;
+  const totalOpEx=tax+ins+mgmtAmt+maint+capex+other;
+  const noi=(egi-totalOpEx)*12;
+  const loanAmt=price-down;
+  const monthlyDS=loanAmt>0?pmt(rate/100,amort*12,loanAmt):0;
+  const annualDS=monthlyDS*12;
+  const cashFlow=noi-annualDS;
+  const totalInvested=down+closing;
+  const capRate=price>0?(noi/price)*100:0;
+  const coc=totalInvested>0?(cashFlow/totalInvested)*100:0;
+  const dscr=annualDS>0?noi/annualDS:99;
+  const grm=grossRent>0?price/(grossRent*12):0;
+
+  const pass=coc>=8&&capRate>=6&&dscr>=1.2;
+  const partial=(coc>=5||capRate>=5||dscr>=1.1)&&!pass;
+  const vc=pass?'var(--green)':partial?'var(--amber)':'var(--red)';
+  document.getElementById('az-verdict').innerHTML=`<span style="font-size:14px;font-weight:600;color:${vc};">${pass?'✓ Deal Passes Targets':partial?'⚠ Borderline — Review':'✗ Deal Misses Targets'}</span>`;
+
+  document.getElementById('az-metrics').innerHTML=[
+    ['Cash-on-Cash',coc.toFixed(2)+'%',coc>=8?'var(--green)':coc>=5?'var(--amber)':'var(--red)','Target 8%+'],
+    ['Cap Rate',capRate.toFixed(2)+'%',capRate>=6?'var(--green)':'var(--red)','Target 6%+'],
+    ['DSCR',dscr.toFixed(2)+'x',dscr>=1.2?'var(--green)':dscr>=1.0?'var(--amber)':'var(--red)','Target 1.20x'],
+    ['Monthly CF',fmtD(cashFlow/12),cashFlow>=0?'var(--green)':'var(--red)',fmtD(cashFlow)+'/yr'],
+    ['GRM',grm.toFixed(2)+'x','var(--text)',''],
+    ['Immediate Equity',fmtK(arv-price),arv-price>0?'var(--green)':'var(--red)','ARV - Price'],
+    ['Total OOP',fmtK(totalInvested),'var(--text)','Down + Closing'],
+    ['NOI Annual',fmtK(noi),noi>0?'var(--green)':'var(--red)',''],
+  ].map(([l,v,c,s])=>`<div class="card-sm"><div class="stat-label">${l}</div><div style="font-size:18px;font-weight:700;color:${c};margin:3px 0;">${v}</div>${s?`<div class="stat-label">${s}</div>`:''}</div>`).join('');
+
+  document.getElementById('az-cashflow').innerHTML=`
+    <div class="sec-header">Monthly Breakdown</div>
+    <div class="cf-row"><span class="cf-label">Gross rent</span><span class="cf-val">${fmtD(grossRent)}</span></div>
+    <div class="cf-row"><span class="cf-label">Vacancy</span><span class="cf-val neg">−${fmtD(grossRent*vacancy)}</span></div>
+    <div class="cf-row"><span class="cf-label">EGI</span><span class="cf-val pos">${fmtD(egi)}</span></div>
+    <div class="cf-row"><span class="cf-label">Taxes</span><span class="cf-val neg">−${fmtD(tax)}</span></div>
+    <div class="cf-row"><span class="cf-label">Insurance</span><span class="cf-val neg">−${fmtD(ins)}</span></div>
+    <div class="cf-row"><span class="cf-label">Management</span><span class="cf-val neg">−${fmtD(mgmtAmt)}</span></div>
+    <div class="cf-row"><span class="cf-label">Maintenance</span><span class="cf-val neg">−${fmtD(maint)}</span></div>
+    <div class="cf-row"><span class="cf-label">CapEx</span><span class="cf-val neg">−${fmtD(capex)}</span></div>
+    <div class="cf-row"><span class="cf-label">Debt Service</span><span class="cf-val neg">−${fmtD(monthlyDS)}</span></div>
+    <div class="cf-total"><span class="cf-total-label">Net Cash Flow</span><span class="cf-total-val" style="color:${cashFlow/12>=0?'var(--green)':'var(--red)'};">${fmtD(cashFlow/12)}/mo</span></div>
+  `;
+
+  const years=[1,2,3,4,5,6,7,8,9,10];
+  const cfData=years.map(yr=>{ const r=grossRent*Math.pow(1.03,yr-1),e=totalOpEx*Math.pow(1.025,yr-1),no=(r*(1-vacancy)-e)*12; return Math.round(no-annualDS); });
+  if (azChartInst) azChartInst.destroy();
+  setTimeout(()=>{
+    const ctx=document.getElementById('azProjectionChart');
+    if(!ctx) return;
+    azChartInst=new Chart(ctx,{
+      type:'bar',
+      data:{ labels:years.map(y=>'Yr '+y), datasets:[{ data:cfData, backgroundColor:cfData.map(v=>v>=0?'#22c98b44':'#e8545444'), borderColor:cfData.map(v=>v>=0?'#22c98b':'#e85454'), borderWidth:1.5, borderRadius:4 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false},ticks:{color:'#8b91a8',font:{size:10}}}, y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#8b91a8',callback:v=>fmtK(v)}} } }
+    });
+  },50);
+}
+async function runAIMemo() {
+  const out=document.getElementById('az-ai-output');
+  out.innerHTML='<div class="ai-box"><span class="ai-thinking">Analyzing<span class="thinking-dots"></span></span></div>';
+  const addr=document.getElementById('az-addr').value||'Subject Property';
+  const city=document.getElementById('az-city').value||'';
+  const price=document.getElementById('az-price').value;
+  const arv=document.getElementById('az-arv').value;
+  const rent=document.getElementById('az-rent').value;
+  const strat=document.getElementById('az-strat').value;
+  const rate=document.getElementById('az-rate').value;
+  const down=document.getElementById('az-down').value;
+  const sqft=document.getElementById('az-sqft').value;
+  const year=document.getElementById('az-year').value;
+  const stratNames={seller:'Seller Financing',subto:'Subject-To',conv:'Conventional'};
+  const prompt=`You are a sharp TX multifamily underwriter. Write a concise investment memo:
+PROPERTY: ${addr}, ${city} TX | Strategy: ${stratNames[strat]}
+Purchase: $${parseInt(price).toLocaleString()} | ARV: $${parseInt(arv).toLocaleString()} | Sqft: ${parseInt(sqft).toLocaleString()} | Year: ${year}
+Gross Rent: $${parseInt(rent).toLocaleString()}/mo | Down: $${parseInt(down).toLocaleString()} | Rate: ${rate}%
+Write 4 sections (no markdown, numbered):
+1. GO/NO-GO — one sentence
+2. Top 2 strengths
+3. Top 2 risks
+4. One specific negotiation lever for ${stratNames[strat]} in TX 2026
+Under 220 words, no fluff.`;
+  try {
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:prompt}]})});
+    const data=await resp.json();
+    const text=data.content?.map(b=>b.text||'').join('')||'No response.';
+    out.innerHTML=`<div class="ai-box" style="white-space:pre-wrap;">${text}</div>`;
+  } catch(e) { out.innerHTML=`<div class="ai-box"><span class="ai-thinking">Error: ${e.message}</span></div>`; }
+}
+
+// ===================== CASH FLOW =====================
+function renderCashflow() {
+  const rentsf=parseFloat(document.getElementById('cf-rentsf').value)||1.1;
+  const vac=parseFloat(document.getElementById('cf-vacancy').value)/100||0.07;
+  const expratio=parseFloat(document.getElementById('cf-expratio').value)/100||0.45;
+  const intRate=parseFloat(document.getElementById('cf-rate').value)/100||0.065;
+  const appre=parseFloat(document.getElementById('cf-appre').value)/100||0.04;
+  let totalRent=0,totalEGI=0,totalNOI=0,totalDS=0,totalCF=0;
+
+  const rows=props.map(p=>{
+    const sqft=n(p['Building Sqft']);
+    const loanBal=n(p['Loan 1 Balance'])||n(p['Est. Remaining balance of Open Loans']);
+    const existingRate=n(p['Loan 1 Rate'])/100||intRate;
+    const rent=Math.round(sqft*rentsf);
+    const egi=Math.round(rent*(1-vac));
+    const opex=Math.round(egi*expratio);
+    const noi=egi-opex;
+    const monthlyDS=loanBal>0?Math.round(pmt(existingRate,30*12,loanBal)):0;
+    const cf=noi-monthlyDS;
+    const capRateVal=(noi>0&&n(p['Est. Value'])>0)?((noi*12)/n(p['Est. Value'])*100):0;
+    totalRent+=rent;totalEGI+=egi;totalNOI+=noi;totalDS+=monthlyDS;totalCF+=cf;
+    return {p,rent,egi,opex,noi,monthlyDS,cf,capRateVal};
+  });
+
+  document.getElementById('cf-portfolio-stats').innerHTML=`
+    <div class="info-row"><span class="info-key">Gross Rent/mo</span><span class="info-val">${fmtK(totalRent)}</span></div>
+    <div class="info-row"><span class="info-key">EGI/mo</span><span class="info-val">${fmtK(totalEGI)}</span></div>
+    <div class="info-row"><span class="info-key">NOI/mo</span><span class="info-val" style="color:var(--green);">${fmtK(totalNOI)}</span></div>
+    <div class="info-row"><span class="info-key">Debt Service/mo</span><span class="info-val" style="color:var(--red);">−${fmtK(totalDS)}</span></div>
+    <div class="info-row" style="border:none;padding-top:12px;"><span class="info-key" style="font-size:13px;">Net CF/mo</span><span style="font-size:22px;font-weight:700;color:${totalCF>=0?'var(--green)':'var(--red)'};">${fmtK(totalCF)}</span></div>
+  `;
+
+  const years=[1,2,3,4,5];
+  const projCF=years.map(yr=>Math.round(totalCF*12*Math.pow(1.03,yr-1)));
+  const projVal=years.map(yr=>Math.round(props.reduce((s,p)=>s+n(p['Est. Value']),0)*Math.pow(1+appre,yr)));
+  if (cfProjInst) cfProjInst.destroy();
+  setTimeout(()=>{
+    const ctx=document.getElementById('cfProjectionChart');
+    if(!ctx) return;
+    cfProjInst=new Chart(ctx,{
+      type:'line',
+      data:{ labels:years.map(y=>'20'+(26+y-1)), datasets:[
+        {label:'Annual Net CF',data:projCF,borderColor:'#22c98b',backgroundColor:'#22c98b22',fill:true,tension:0.3,borderWidth:2},
+        {label:'Portfolio Value',data:projVal,borderColor:'#4f6ef7',backgroundColor:'#4f6ef722',fill:true,tension:0.3,borderWidth:2,yAxisID:'y2'}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b91a8',font:{size:11}}}},scales:{x:{grid:{display:false},ticks:{color:'#8b91a8'}},y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#8b91a8',callback:v=>fmtK(v)}},y2:{position:'right',grid:{display:false},ticks:{color:'#4f6ef7',callback:v=>fmtK(v)}}}}
+    });
+  },50);
+
+  // Table
+  document.getElementById('cf-table').innerHTML=rows.map(({p,rent,egi,opex,noi,monthlyDS,cf,capRateVal})=>`
+    <tr onclick="openPanel(${p._id})">
+      <td><div class="td-addr">${p.Address}</div></td>
+      <td>${p.City}</td>
+      <td>${n(p['Building Sqft']).toLocaleString()}</td>
+      <td>${fmtD(rent)}</td>
+      <td>${fmtD(egi)}</td>
+      <td style="color:var(--text2);">−${fmtD(opex)}</td>
+      <td style="color:var(--green);">${fmtD(noi)}</td>
+      <td style="color:var(--red);">−${fmtD(monthlyDS)}</td>
+      <td style="color:${cf>=0?'var(--green)':'var(--red)'};font-weight:600;">${cf>=0?'+':''}${fmtD(cf)}</td>
+      <td>${capRateVal>0?capRateVal.toFixed(1)+'%':'—'}</td>
+    </tr>`).join('');
+
+  // Mobile cash flow cards
+  document.getElementById('cf-cards').innerHTML=rows.map(({p,rent,egi,noi,monthlyDS,cf,capRateVal})=>`
+    <div class="prop-card" onclick="openPanel(${p._id})">
+      <div class="prop-card-header"><div><div class="prop-card-addr">${p.Address}</div><div class="prop-card-city">${p.City}</div></div><span style="font-size:16px;font-weight:700;color:${cf>=0?'var(--green)':'var(--red)'};">${cf>=0?'+':''}${fmtD(cf)}/mo</span></div>
+      <div class="prop-card-row"><span class="prop-card-key">Est. Rent</span><span class="prop-card-val">${fmtD(rent)}</span></div>
+      <div class="prop-card-row"><span class="prop-card-key">NOI</span><span class="prop-card-val" style="color:var(--green);">${fmtD(noi)}</span></div>
+      <div class="prop-card-row"><span class="prop-card-key">Debt Svc</span><span class="prop-card-val" style="color:var(--red);">−${fmtD(monthlyDS)}</span></div>
+      <div class="prop-card-row"><span class="prop-card-key">Cap Rate</span><span class="prop-card-val">${capRateVal>0?capRateVal.toFixed(1)+'%':'—'}</span></div>
+    </div>`).join('');
+}
+
+// ===================== CONTACTS =====================
+function renderContacts() {
+  const city=document.getElementById('ctct-city').value;
+  const dnc=document.getElementById('ctct-dnc').value;
+  const search=document.getElementById('ctct-search').value.toLowerCase();
+  let filtered=props.filter(p=>{
+    if (city&&p.City!==city) return false;
+    if (dnc==='dnc'&&!['Phone 1 DNC','Phone 2 DNC','Phone 3 DNC','Phone 4 DNC','Phone 5 DNC'].some(k=>p[k]==='DNC')) return false;
+    if (dnc==='clean'&&['Phone 1 DNC','Phone 2 DNC','Phone 3 DNC','Phone 4 DNC','Phone 5 DNC'].some(k=>p[k]==='DNC')) return false;
+    if (search){const h=((p['Owner 1 Last Name']||'')+' '+(p.Address||''));if(!h.toLowerCase().includes(search))return false;}
+    return true;
+  });
+
+  // Desktop table
+  document.getElementById('contacts-table').innerHTML=filtered.map(p=>{
+    const phones=[1,2,3,4,5].filter(i=>p[`Phone ${i}`]).map(i=>{const d=p[`Phone ${i} DNC`]==='DNC'?' <span class="dnc">DNC</span>':'';return p[`Phone ${i}`]+d;}).join('<br>');
+    const emails=[1,2,3,4].filter(i=>p[`Email ${i}`]).map(i=>p[`Email ${i}`]).join('<br>');
+    const mailing=p['Mailing City']&&p['Mailing City']!==p.City?`${p['Mailing City']}, ${p['Mailing State']}`:'Local';
+    return `<tr onclick="openPanel(${p._id})">
+      <td><div style="font-weight:500;">${p['Owner 1 Last Name']||'—'}</div><div style="font-size:11px;color:var(--text3);">${p['Owner 1 First Name']||''}</div></td>
+      <td>${p.Address}</td><td>${p.City}</td>
+      <td style="font-size:12px;color:var(--text2);">${mailing}</td>
+      <td style="font-size:12px;">${phones||'—'}</td>
+      <td style="font-size:12px;color:var(--teal);">${emails||'—'}</td>
+      <td>${stageBadge(p._stage)}</td>
+    </tr>`;
+  }).join('');
+
+  // Mobile contact cards
+  document.getElementById('contacts-cards').innerHTML=filtered.map(p=>{
+    const phones=[1,2,3,4,5].filter(i=>p[`Phone ${i}`]).map(i=>{const d=p[`Phone ${i} DNC`]==='DNC'?' DNC':'';return `<a href="tel:${p[`Phone ${i}`]}" style="color:var(--teal);text-decoration:none;" onclick="event.stopPropagation()">${p[`Phone ${i}`]}${d}</a>`;}).join(' · ');
+    const emails=[1,2,3,4].filter(i=>p[`Email ${i}`]).map(i=>`<a href="mailto:${p[`Email ${i}`]}" style="color:var(--accent2);text-decoration:none;font-size:12px;" onclick="event.stopPropagation()">${p[`Email ${i}`]}</a>`).join('<br>');
+    return `<div class="prop-card" onclick="openPanel(${p._id})">
+      <div class="prop-card-header"><div><div class="prop-card-addr">${p['Owner 1 Last Name']||'—'}</div><div class="prop-card-city">${p.Address}, ${p.City}</div></div>${stageBadge(p._stage)}</div>
+      ${phones?`<div style="margin-top:8px;font-size:12px;">${phones}</div>`:''}
+      ${emails?`<div style="margin-top:6px;">${emails}</div>`:''}
+      <div class="prop-card-row" style="margin-top:8px;"><span class="prop-card-key">Mailing</span><span class="prop-card-val">${p['Mailing City']?p['Mailing City']+', '+p['Mailing State']:'Local'}</span></div>
+      <div style="display:flex;gap:6px;margin-top:10px;">
+        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px;flex:1;" onclick="event.stopPropagation();openPanel(${p._id})">View</button>
+        <button class="btn" style="font-size:12px;padding:6px 10px;flex:1;background:var(--green);color:#fff;border:none;" onclick="event.stopPropagation();openSmsModal(${p._id})">💬 Text</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+// ===================== SMS / GV TEXTING =====================
+const SMS_TEMPLATES = [
+  { label:'First Touch',    body:`Hi {name}, my name is Daniel — local RE investor in SA area. Came across your property at {address} and wanted to reach out. I buy multifamily direct, close quick, flexible terms. Open to a quick chat?` },
+  { label:'Follow-Up',      body:`Hi {name}, following up on {address}. No pressure — just making sure you got my note. If you'd ever consider selling or creative terms, I'd love to connect. Thanks!` },
+  { label:'Seller Finance', body:`Hi {name}, I'm Daniel, a multifamily investor. Interested in {address}. I do seller-financed deals — can mean better tax treatment and terms for you. Worth a 10-min call?` },
+  { label:'Subject-To',     body:`Hi {name}, reaching out about {address}. I work with owners who want to exit without a traditional sale — sometimes we can take over existing loans, saving you time and costs. Interested?` },
+  { label:'Free & Clear',   body:`Hi {name}, saw {address} is free and clear — great position. I'd love to make an offer that reflects that and close on your timeline. No agents. Open to talking?` },
+  { label:'Distressed',     body:`Hi {name}, I saw {address} and wanted to reach out. If you're ready to move on — vacancies, maintenance, or just done — I buy as-is and close fast. No fees. Good time to chat?` },
+];
+
+let smsConversations = {};
+let sendQueue = [];
+let smsStats = { sent:0, owners:new Set(), aiDrafted:0 };
+let activeSmsModal = null;
+let activeThread = null;
+
+function getSelectedPhone() {
+  const radios = document.querySelectorAll('input[name="sms-phone"]');
+  let phone = '';
+  if (radios.length) { radios.forEach(r=>{ if(r.checked) phone=r.value; }); if(!phone) phone=radios[0]?.value||''; }
+  if (!phone && activeSmsModal!==null) {
+    const p=props.find(x=>x._id==activeSmsModal);
+    if(p){ const ci=[1,2,3,4,5].filter(i=>p[`Phone ${i}`]&&p[`Phone ${i} DNC`]!=='DNC'); if(ci.length) phone=p[`Phone ${ci[0]}`]; }
+  }
+  return phone;
+}
+
+function prepareSend() {
+  const body = document.getElementById('sms-message-body').value.trim();
+  if (!body) { alert('Write a message first.'); return; }
+  const phone = getSelectedPhone();
+  if (!phone) { alert('No clean phone number found for this owner.'); return; }
+  const propId = activeSmsModal;
+  if (propId !== null) {
+    if (!smsConversations[propId]) smsConversations[propId]={ phone, messages:[] };
+    smsConversations[propId].messages.push({ dir:'out', text:body, time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) });
+    smsStats.sent++; smsStats.owners.add(propId);
+    document.getElementById('texts-badge').textContent=smsStats.sent;
+    const p=props.find(x=>x._id==propId);
+    if(p&&p._stage==='New Lead') p._stage='Contacted';
+    updateSmsStats();
+  }
+  document.getElementById('gv-phone-display').textContent = phone;
+  document.getElementById('gv-msg-preview').textContent = body;
+  document.getElementById('gv-send-panel').style.display='block';
+  [1,2,3].forEach(i=>{ document.getElementById(`gv-step-${i}`).querySelector('.gv-step-num').classList.remove('done'); });
+  const cpb=document.getElementById('gv-copy-phone-btn'); cpb.textContent='Copy'; cpb.classList.remove('gv-copied');
+  const cmb=document.getElementById('gv-copy-msg-btn'); cmb.textContent='Copy'; cmb.classList.remove('gv-copied');
+}
+
+function gvCopyPhone() {
+  const phone = document.getElementById('gv-phone-display').textContent;
+  navigator.clipboard.writeText(phone).then(()=>{
+    const btn=document.getElementById('gv-copy-phone-btn');
+    btn.textContent='✓ Copied!'; btn.classList.add('gv-copied');
+    document.getElementById('gv-step-1').querySelector('.gv-step-num').classList.add('done');
+  }).catch(()=>{});
+}
+
+function gvCopyMessage() {
+  const msg = document.getElementById('sms-message-body').value.trim();
+  navigator.clipboard.writeText(msg).then(()=>{
+    const btn=document.getElementById('gv-copy-msg-btn');
+    btn.textContent='✓ Copied!'; btn.classList.add('gv-copied');
+    document.getElementById('gv-step-2').querySelector('.gv-step-num').classList.add('done');
+  }).catch(()=>{});
+}
+
+function gvOpened() {
+  document.getElementById('gv-step-3').querySelector('.gv-step-num').classList.add('done');
+  setTimeout(()=>{
+    const allDone=[1,2,3].every(i=>document.getElementById(`gv-step-${i}`).querySelector('.gv-step-num').classList.contains('done'));
+    if(allDone){ closeSmsModal(); if(document.getElementById('page-texts').classList.contains('active')) renderTextsPage(); }
+  },1500);
+}
+
+function addToQueue() {
+  const body = document.getElementById('sms-message-body').value.trim();
+  if (!body) { alert('Write a message first.'); return; }
+  const phone = getSelectedPhone();
+  if (!phone) { alert('No phone number available.'); return; }
+  const propId = activeSmsModal;
+  const p = props.find(x=>x._id==propId);
+  if (sendQueue.find(q=>q.propId===propId&&!q.sent)) { alert('Already in queue.'); return; }
+  sendQueue.push({ propId, phone, message:body, sent:false, name:p?p['Owner 1 Last Name']||'Unknown':'Unknown', addr:p?p.Address:'' });
+  document.getElementById('texts-badge').textContent='Q:'+sendQueue.filter(q=>!q.sent).length;
+  closeSmsModal();
+  showPage('texts');
+}
+
+function renderQueue() {
+  const el=document.getElementById('queue-list');
+  if(!el) return;
+  const badge=document.getElementById('queue-count-badge');
+  const pending=sendQueue.filter(q=>!q.sent);
+  if(badge) badge.textContent=`${pending.length} pending · ${sendQueue.filter(q=>q.sent).length} sent`;
+  if(!sendQueue.length){ el.innerHTML='<div style="padding:30px;text-align:center;color:var(--text3);font-size:13px;">Queue is empty.<br><span style="font-size:12px;">Add contacts or use Bulk Queue ⚡</span></div>'; return; }
+  el.innerHTML=sendQueue.map((item,idx)=>`
+    <div class="queue-item" style="${item.sent?'opacity:.55':''}">
+      <div class="queue-check ${item.sent?'sent':''}" onclick="toggleQueueSent(${idx})">${item.sent?'✓':''}</div>
+      <div class="queue-info">
+        <div class="queue-name">${item.name}</div>
+        <div class="queue-phone">${item.phone} · ${item.addr}</div>
+        <div class="queue-preview">${item.message.substring(0,60)}${item.message.length>60?'…':''}</div>
+      </div>
+      <div class="queue-actions">
+        <button class="queue-btn primary" onclick="launchQueueItem(${idx})">Send via GV</button>
+        <button class="queue-btn" onclick="removeFromQueue(${idx})">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function launchQueueItem(idx) {
+  const item=sendQueue[idx]; if(!item) return;
+  navigator.clipboard.writeText(item.phone).catch(()=>{});
+  setTimeout(()=>navigator.clipboard.writeText(item.message).catch(()=>{}),300);
+  window.open('https://voice.google.com/u/0/messages','_blank');
+  sendQueue[idx].sent=true;
+  if(!smsConversations[item.propId]) smsConversations[item.propId]={phone:item.phone,messages:[]};
+  smsConversations[item.propId].messages.push({dir:'out',text:item.message,time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});
+  smsStats.sent++; smsStats.owners.add(item.propId);
+  const p=props.find(x=>x._id==item.propId);
+  if(p&&p._stage==='New Lead') p._stage='Contacted';
+  document.getElementById('texts-badge').textContent='Q:'+sendQueue.filter(q=>!q.sent).length||smsStats.sent;
+  updateSmsStats(); renderTextsPage();
+}
+
+function toggleQueueSent(idx) { sendQueue[idx].sent=!sendQueue[idx].sent; renderTextsPage(); }
+function removeFromQueue(idx) { sendQueue.splice(idx,1); renderTextsPage(); }
+function clearSentFromQueue() { sendQueue=sendQueue.filter(q=>!q.sent); renderTextsPage(); }
+
+function openBulkQueue() {
+  const sel=document.getElementById('bq-template');
+  if(sel) sel.innerHTML=SMS_TEMPLATES.map((t,i)=>`<option value="${i}">${t.label}</option>`).join('');
+  previewBulkQueue();
+  document.getElementById('bulk-queue-backdrop').classList.add('show');
+}
+function closeBulkQueue() { document.getElementById('bulk-queue-backdrop').classList.remove('show'); }
+
+function getBulkCandidates() {
+  const city=document.getElementById('bq-city').value;
+  const equity=document.getElementById('bq-equity').value;
+  const stage=document.getElementById('bq-stage').value;
+  const limit=parseInt(document.getElementById('bq-limit').value)||20;
+  return props.filter(p=>{
+    if(city&&p.City!==city) return false;
+    if(equity==='free'&&!(n(p['Total Open Loans'])===0&&n(p['Est. Equity'])>0)) return false;
+    if(equity==='high'&&n(p['Est. Equity'])<=500000) return false;
+    if(stage&&p._stage!==stage) return false;
+    return [1,2,3,4,5].some(i=>p[`Phone ${i}`]&&p[`Phone ${i} DNC`]!=='DNC');
+  }).slice(0,limit);
+}
+
+function fillTemplate(tplIdx, p) {
+  let t=SMS_TEMPLATES[tplIdx].body;
+  return t.replace(/{name}/g,p['Owner 1 First Name']||p['Owner 1 Last Name']||'there')
+           .replace(/{address}/g,p.Address).replace(/{city}/g,p.City);
+}
+
+function previewBulkQueue() {
+  const candidates=getBulkCandidates();
+  const tplIdx=parseInt(document.getElementById('bq-template').value)||0;
+  const preview=document.getElementById('bq-preview');
+  const result=document.getElementById('bq-result');
+  if(candidates.length){
+    preview.style.display='block';
+    preview.textContent='Sample: '+fillTemplate(tplIdx,candidates[0]);
+    result.style.display='block';
+    document.getElementById('bq-result-text').innerHTML=`<span style="color:var(--green);">${candidates.length} contacts matched</span> — will add to queue`;
+  } else {
+    preview.style.display='none';
+    result.style.display='block';
+    document.getElementById('bq-result-text').innerHTML='<span style="color:var(--amber);">No contacts match these filters</span>';
+  }
+}
+
+function applyBulkQueue() {
+  const candidates=getBulkCandidates();
+  const tplIdx=parseInt(document.getElementById('bq-template').value)||0;
+  let added=0;
+  candidates.forEach(p=>{
+    if(sendQueue.find(q=>q.propId===p._id&&!q.sent)) return;
+    const ci=[1,2,3,4,5].filter(i=>p[`Phone ${i}`]&&p[`Phone ${i} DNC`]!=='DNC');
+    if(!ci.length) return;
+    sendQueue.push({propId:p._id,phone:p[`Phone ${ci[0]}`],message:fillTemplate(tplIdx,p),sent:false,name:p['Owner 1 Last Name']||'Unknown',addr:p.Address});
+    added++;
+  });
+  closeBulkQueue();
+  document.getElementById('texts-badge').textContent='Q:'+sendQueue.filter(q=>!q.sent).length;
+  renderTextsPage();
+}
+
+function openSmsModal(propId) {
+  activeSmsModal = propId;
+  document.getElementById('sms-modal-backdrop').classList.add('show');
+  document.getElementById('gv-send-panel').style.display='none';
+  const sel=document.getElementById('sms-recipient-select');
+  sel.innerHTML='<option value="">— Select owner —</option>';
+  props.forEach(p=>{
+    const phones=[1,2,3,4,5].filter(i=>p[`Phone ${i}`]&&p[`Phone ${i} DNC`]!=='DNC');
+    if(!phones.length) return;
+    const o=document.createElement('option'); o.value=p._id;
+    o.textContent=(p['Owner 1 Last Name']||'Unknown')+' — '+p.Address;
+    sel.appendChild(o);
+  });
+  if(propId!==null){ sel.value=propId; loadSmsRecipient(propId); }
+  else { document.getElementById('sms-recipient-info').textContent=''; document.getElementById('sms-phone-picker').style.display='none'; document.getElementById('sms-thread-wrap').style.display='none'; }
+  document.getElementById('tpl-row').innerHTML=SMS_TEMPLATES.map((t,i)=>`<span class="tpl-pill" onclick="applyTemplate(${i})">${t.label}</span>`).join('');
+  document.getElementById('sms-message-body').value='';
+  document.getElementById('sms-ai-status').textContent='';
+  document.getElementById('sms-modal-title').textContent='Compose Message';
+  const qb=document.getElementById('gv-add-queue-btn');
+  if(qb) qb.style.display=(propId!==null?'inline-block':'none');
+  updateCharCount();
+}
+
+function loadSmsRecipient(propId) {
+  if(propId===''||propId===null||propId===undefined) return;
+  const p=props.find(x=>x._id==propId); if(!p) return;
+  activeSmsModal=p._id;
+  document.getElementById('sms-modal-title').textContent='Text '+(p['Owner 1 Last Name']||'Owner');
+  document.getElementById('sms-modal-sub').textContent=p.Address+', '+p.City;
+  const eq=n(p['Est. Equity']);
+  const ls=n(p['Total Open Loans'])===0?'Free & Clear':(eq>500000?'High Equity':'Active Loan');
+  document.getElementById('sms-recipient-info').textContent=`${p.City} · ${ls} · Score ${p._score}`;
+  const qb=document.getElementById('gv-add-queue-btn'); if(qb) qb.style.display='inline-block';
+  const phones=[1,2,3,4,5].filter(i=>p[`Phone ${i}`]);
+  const picker=document.getElementById('sms-phone-picker');
+  if(phones.length>1){
+    picker.style.display='block';
+    document.getElementById('sms-phone-options').innerHTML=phones.map(i=>{
+      const dnc=p[`Phone ${i} DNC`]==='DNC';
+      return `<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;${dnc?'opacity:.5':''}">
+        <input type="radio" name="sms-phone" value="${p[`Phone ${i}`]}" ${i===phones[0]&&!dnc?'checked':''} ${dnc?'disabled':''}>
+        <span style="font-size:13px;">${p[`Phone ${i}`]}<span style="color:var(--text3);font-size:11px;"> ${p[`Phone ${i} Type`]||''}${dnc?' DNC':''}</span></span>
+      </label>`;
+    }).join('');
+  } else if(phones.length===1){
+    picker.style.display='block';
+    const isDnc=p[`Phone ${phones[0]} DNC`]==='DNC';
+    document.getElementById('sms-phone-options').innerHTML=`<div style="font-size:13px;color:${isDnc?'var(--red)':'var(--text)'};">${p[`Phone ${phones[0]}`]}${isDnc?' <span style="color:var(--red);font-size:11px;">DNC</span>':''}</div>`;
+  } else { picker.style.display='none'; }
+  const conv=smsConversations[p._id];
+  const tw=document.getElementById('sms-thread-wrap');
+  if(conv&&conv.messages.length){
+    tw.style.display='block';
+    document.getElementById('sms-thread-preview').innerHTML=conv.messages.map(m=>`<div class="${m.dir==='out'?'bubble-out':'bubble-in'}">${m.text}<span class="bubble-time">${m.time}</span></div>`).join('');
+  } else { tw.style.display='none'; }
+}
+
+function applyTemplate(idx){
+  document.querySelectorAll('.tpl-pill').forEach((el,i)=>el.classList.toggle('sel',i===idx));
+  const p=activeSmsModal!==null?props.find(x=>x._id===activeSmsModal):null;
+  let text=SMS_TEMPLATES[idx].body;
+  if(p){ text=text.replace(/{name}/g,p['Owner 1 First Name']||p['Owner 1 Last Name']||'there').replace(/{address}/g,p.Address).replace(/{city}/g,p.City); }
+  document.getElementById('sms-message-body').value=text; updateCharCount();
+}
+
+function updateCharCount(){
+  const val=document.getElementById('sms-message-body').value;
+  const len=val.length, segs=Math.ceil(len/160)||1;
+  const el=document.getElementById('sms-char-count');
+  el.textContent=`${len} / ${segs>1?segs+' msgs':160}`;
+  el.style.color=len>320?'var(--red)':len>160?'var(--amber)':'var(--text3)';
+}
+
+async function aiDraftSms(){
+  const p=activeSmsModal!==null?props.find(x=>x._id===activeSmsModal):null;
+  const status=document.getElementById('sms-ai-status'); status.textContent='✦ Drafting…';
+  const eq=p?n(p['Est. Equity']):0;
+  const ls=p&&n(p['Total Open Loans'])===0?'free and clear':(p&&eq>500000?'high equity':'active loan');
+  const ctx=p?`Property: ${p.Address}, ${p.City} TX. Owner: ${p['Owner 1 Last Name']||'unknown'}. Value: ${fmtK(n(p['Est. Value']))}. Equity: ${fmtK(eq)}. Loan: ${ls}. Year: ${p['Year Built']||'unknown'}.`:'General TX multifamily.';
+  const sel=document.querySelector('.tpl-pill.sel');
+  const strat=sel?sel.textContent:'creative financing';
+  const prompt=`You are Daniel, a TX multifamily investor (seller finance, subject-to). Write a friendly SMS to a property owner. Under 160 chars ideally, max 300. No hashtags, no corporate speak. Sound like a real person. Context: ${ctx} Angle: ${strat}. Write ONLY the message.`;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,messages:[{role:'user',content:prompt}]})});
+    const data=await resp.json();
+    const text=data.content?.map(b=>b.text||'').join('').trim()||'';
+    document.getElementById('sms-message-body').value=text; updateCharCount();
+    status.textContent='✦ AI drafted'; smsStats.aiDrafted++; updateSmsStats();
+  } catch(e){ status.textContent='✦ Error: '+e.message; }
+}
+
+function closeSmsModal(){
+  document.getElementById('sms-modal-backdrop').classList.remove('show'); activeSmsModal=null;
+}
+
+function updateSmsStats(){
+  const s=document.getElementById('sms-stat-sent'); const o=document.getElementById('sms-stat-owners'); const a=document.getElementById('sms-stat-ai');
+  if(s) s.textContent=smsStats.sent; if(o) o.textContent=smsStats.owners.size; if(a) a.textContent=smsStats.aiDrafted;
+}
+
+function renderTextsPage(){
+  renderQueue();
+  const threadList=document.getElementById('thread-list'); if(!threadList) return;
+  const convEntries=Object.entries(smsConversations).filter(([id,c])=>c.messages.length>0);
+  const tcEl=document.getElementById('thread-count'); if(tcEl) tcEl.textContent=convEntries.length+' convos';
+  if(!convEntries.length){ threadList.innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px;">No messages logged yet</div>'; updateSmsStats(); return; }
+  threadList.innerHTML=convEntries.map(([id,conv])=>{
+    const p=props.find(x=>x._id==id);
+    const name=p?(p['Owner 1 Last Name']||'Unknown'):'Unknown';
+    const last=conv.messages[conv.messages.length-1];
+    return `<div class="thread-item" onclick="openSmsModal(${id})">
+      <div class="thread-avatar" style="width:34px;height:34px;font-size:12px;">${name.substring(0,2).toUpperCase()}</div>
+      <div class="thread-info">
+        <div class="thread-name">${name}</div>
+        <div class="thread-preview">${last.text.substring(0,50)}${last.text.length>50?'…':''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div class="thread-time">${last.time}</div>
+        <div style="font-size:10px;color:var(--text3);">${conv.messages.length} msg${conv.messages.length>1?'s':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+  updateSmsStats();
+}
+
+// Legacy stubs
+function sendSmsLog(){ prepareSend(); }
+function sendNativeSms(){}
+function sendFromChat(){}
+function aiSuggestReply(){}
+function openThreadView(){}
+
+// ===================== showPage — add texts page =====================
+function checkMobileLayout() {
+  const mobile = window.innerWidth <= 600;
+  // CF cards vs table
+  const cfTable = document.querySelector('.cf-table-wrap');
+  const cfCards = document.getElementById('cf-cards');
+  if (cfTable) cfTable.style.display = mobile ? 'none' : 'block';
+  if (cfCards) cfCards.style.display = mobile ? 'block' : 'none';
+  // Contacts cards vs table
+  const ctTable = document.querySelector('.contacts-table-wrap');
+  const ctCards = document.getElementById('contacts-cards');
+  if (ctTable) ctTable.style.display = mobile ? 'none' : 'block';
+  if (ctCards) ctCards.style.display = mobile ? 'block' : 'none';
+}
+
+window.addEventListener('resize', checkMobileLayout);
+checkMobileLayout();
+
+// Init
+filteredProps = [...props];
+renderDashboard();
+setTimeout(() => { renderPropTable(); }, 50);
+</script>
+<!-- Bulk Queue Modal -->
+<div class="import-modal-backdrop" id="bulk-queue-backdrop" style="z-index:800;">
+  <div class="import-modal" style="max-width:520px;">
+    <div class="import-header">
+      <div><div class="import-title">⚡ Build Send Queue</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Auto-select owners based on criteria — then draft all messages</div></div>
+      <button class="import-close" onclick="closeBulkQueue()">✕</button>
+    </div>
+    <div class="import-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Filter by City</label>
+          <select id="bq-city" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 10px;font-size:14px;color:var(--text);font-family:var(--font);-webkit-appearance:none;outline:none;">
+            <option value="">All Cities</option><option>Canyon Lake</option><option>New Braunfels</option><option>Spring Branch</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Equity Type</label>
+          <select id="bq-equity" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 10px;font-size:14px;color:var(--text);font-family:var(--font);-webkit-appearance:none;outline:none;">
+            <option value="">All Types</option><option value="free">Free & Clear</option><option value="high">High Equity ($500K+)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Pipeline Stage</label>
+          <select id="bq-stage" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 10px;font-size:14px;color:var(--text);font-family:var(--font);-webkit-appearance:none;outline:none;">
+            <option value="">Any Stage</option><option>New Lead</option><option>Contacted</option><option>Interested</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Max contacts</label>
+          <input id="bq-limit" type="number" value="20" min="1" max="100" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 10px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;">
+        </div>
+      </div>
+      <div class="field">
+        <label>Message Template</label>
+        <select id="bq-template" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 10px;font-size:14px;color:var(--text);font-family:var(--font);-webkit-appearance:none;outline:none;"></select>
+      </div>
+      <div id="bq-preview" style="display:none;background:var(--bg3);border-radius:var(--radius-sm);padding:12px;font-size:12px;color:var(--text2);margin-top:4px;line-height:1.6;"></div>
+      <div id="bq-result" style="margin-top:14px;display:none;">
+        <div style="font-size:13px;color:var(--text2);" id="bq-result-text"></div>
+      </div>
+    </div>
+    <div class="import-footer">
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeBulkQueue()">Cancel</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="previewBulkQueue()">Preview</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="applyBulkQueue()">Add to Queue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import Modal -->
+<div class="import-modal-backdrop" id="import-modal-backdrop">
+  <div class="import-modal">
+    <div class="import-header">
+      <div>
+        <div class="import-title">Import Property Sheet</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;">Accepts PropStream / your existing export format (.xlsx)</div>
+      </div>
+      <button class="import-close" onclick="closeImportModal()">✕</button>
+    </div>
+    <div class="import-body">
+      <!-- Mode toggle -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button id="mode-add" onclick="setImportMode('add')" style="flex:1;padding:9px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;font-family:var(--font);background:rgba(79,110,247,.2);color:var(--accent2);border:1px solid var(--accent);">➕ Add to existing</button>
+        <button id="mode-replace" onclick="setImportMode('replace')" style="flex:1;padding:9px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;font-family:var(--font);background:var(--bg3);color:var(--text2);border:1px solid var(--border2);">🔄 Replace all</button>
+      </div>
+      <div id="import-mode-note" style="font-size:12px;color:var(--text3);margin-bottom:14px;padding:8px 12px;background:var(--bg3);border-radius:var(--radius-sm);">
+        <strong style="color:var(--text2);">Add mode:</strong> New rows are merged in. Duplicates (same address) are skipped. Your pipeline stages and notes are preserved.
+      </div>
+
+      <!-- Drop zone -->
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('xlsx-file-input').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <div class="drop-zone-icon">📊</div>
+        <div class="drop-zone-title">Drop your .xlsx here</div>
+        <div class="drop-zone-sub">or click to browse — same PropStream export format</div>
+      </div>
+      <input type="file" id="xlsx-file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleFileSelect(event)">
+
+      <!-- Progress -->
+      <div class="import-progress" id="import-progress">
+        <div style="font-size:13px;color:var(--text2);" id="import-status-text">Reading file…</div>
+        <div class="import-progress-bar"><div class="import-progress-fill" id="import-progress-fill" style="width:0%"></div></div>
+        <div class="import-log" id="import-log"></div>
+      </div>
+
+      <!-- Result -->
+      <div class="import-result" id="import-result">
+        <div style="font-size:14px;font-weight:600;color:var(--green);" id="import-result-title">✓ Import complete</div>
+        <div class="import-result-grid" id="import-result-grid"></div>
+        <div style="margin-top:14px;font-size:12px;color:var(--text3);" id="import-result-detail"></div>
+      </div>
+    </div>
+    <div class="import-footer">
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeImportModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1;display:none;" id="import-confirm-btn" onclick="applyImport()">✓ Apply Import</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
