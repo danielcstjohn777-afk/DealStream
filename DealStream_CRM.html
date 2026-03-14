@@ -325,7 +325,7 @@
   .queue-btn.green { background:var(--green); color:#fff; border-color:var(--green); }
 
   /* ===== IMPORT MODAL ===== */
-  .import-modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:700; align-items:center; justify-content:center; padding:16px; }
+  .import-modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:900; align-items:center; justify-content:center; padding:16px; }
   .import-modal-backdrop.show { display:flex; }
   .import-modal { background:var(--bg2); border:1px solid var(--border2); border-radius:var(--radius); width:100%; max-width:580px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; }
   .import-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
@@ -372,6 +372,7 @@
     .bottom-nav { display: flex; }
     .search-box { width: 140px; }
     .topbar-analyze-btn { display: none; }
+    #topbar-import-btn { display: flex !important; }
     .content { padding: 14px; }
     .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .stat-value { font-size: 20px; }
@@ -446,8 +447,8 @@
     <button class="menu-btn" onclick="openSidebar()">☰</button>
     <div class="page-title" id="page-title">Dashboard</div>
     <input class="search-box" placeholder="Search…" id="global-search" oninput="handleSearch(this.value)">
-    <button class="topbar-analyze-btn" onclick="openImportModal()" style="background:var(--bg3);color:var(--text2);border:1px solid var(--border2);">⬆ Import</button>
-    <button class="topbar-analyze-btn" onclick="showPage('analyzer')">+ Analyze</button>
+    <button class="topbar-analyze-btn" id="topbar-import-btn" onclick="openImportModal()" style="background:var(--bg3);color:var(--text2);border:1px solid var(--border2);">⬆ Import</button>
+    <button class="topbar-analyze-btn" id="topbar-analyze-btn" onclick="showPage('analyzer')">+ Analyze</button>
   </div>
 
   <div class="content">
@@ -1825,7 +1826,285 @@ function checkMobileLayout() {
   if (ctCards) ctCards.style.display = mobile ? 'block' : 'none';
 }
 
-window.addEventListener('resize', checkMobileLayout);
+
+// ===================== IMPORT / XLSX =====================
+let importMode = 'add';
+let pendingImportRows = null;
+
+function openImportModal() {
+  closeSidebar();
+  document.getElementById('import-modal-backdrop').classList.add('show');
+  resetImportUI();
+}
+function closeImportModal() {
+  document.getElementById('import-modal-backdrop').classList.remove('show');
+  pendingImportRows = null;
+}
+function resetImportUI() {
+  document.getElementById('import-progress').style.display = 'none';
+  document.getElementById('import-result').style.display = 'none';
+  document.getElementById('import-confirm-btn').style.display = 'none';
+  document.getElementById('import-log').textContent = '';
+  document.getElementById('import-progress-fill').style.width = '0%';
+  document.getElementById('drop-zone').style.display = 'block';
+  document.getElementById('xlsx-file-input').value = '';
+  pendingImportRows = null;
+}
+function setImportMode(mode) {
+  importMode = mode;
+  const note = document.getElementById('import-mode-note');
+  if (mode === 'add') {
+    document.getElementById('mode-add').style.cssText = 'flex:1;padding:9px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;font-family:var(--font);background:rgba(79,110,247,.2);color:var(--accent2);border:1px solid var(--accent);';
+    document.getElementById('mode-replace').style.cssText = 'flex:1;padding:9px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;font-family:var(--font);background:var(--bg3);color:var(--text2);border:1px solid var(--border2);';
+    note.innerHTML = '<strong style="color:var(--text2);">Add mode:</strong> New rows merged in. Duplicates (same address) skipped. Pipeline stages &amp; notes preserved.';
+  } else {
+    document.getElementById('mode-replace').style.cssText = 'flex:1;padding:9px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;font-family:var(--font);background:rgba(232,84,84,.2);color:var(--red);border:1px solid var(--red);';
+    document.getElementById('mode-add').style.cssText = 'flex:1;padding:9px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;font-family:var(--font);background:var(--bg3);color:var(--text2);border:1px solid var(--border2);';
+    note.innerHTML = '<strong style="color:var(--red);">Replace mode:</strong> All current properties replaced with new sheet. Pipeline stages &amp; notes will be lost.';
+  }
+}
+function handleDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function handleDragLeave(e) { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processImportFile(file);
+}
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processImportFile(file);
+}
+function setProgress(pct, msg) {
+  document.getElementById('import-progress-fill').style.width = pct + '%';
+  document.getElementById('import-status-text').textContent = msg;
+}
+function addLog(msg, color) {
+  const el = document.getElementById('import-log');
+  el.innerHTML += `<div style="color:${color || 'var(--text2)'};">${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function processImportFile(file) {
+  document.getElementById('drop-zone').style.display = 'none';
+  document.getElementById('import-progress').style.display = 'block';
+  document.getElementById('import-result').style.display = 'none';
+  document.getElementById('import-confirm-btn').style.display = 'none';
+  document.getElementById('import-log').textContent = '';
+  setProgress(5, 'Reading file…');
+  addLog(`📂 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+
+  // CSV path
+  if (file.name.toLowerCase().endsWith('.csv')) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        setProgress(40, 'Parsing CSV…');
+        const wb = XLSX.read(e.target.result, { type: 'string' });
+        finishParse(wb);
+      } catch(err) { addLog('❌ ' + err.message, 'var(--red)'); }
+    };
+    reader.readAsText(file);
+    return;
+  }
+
+  // XLSX/XLS path
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      setProgress(25, 'Parsing spreadsheet…');
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      finishParse(wb);
+    } catch(err) {
+      setProgress(0, 'Error');
+      addLog('❌ ' + err.message, 'var(--red)');
+    }
+  };
+  reader.onerror = () => addLog('❌ Failed to read file', 'var(--red)');
+  reader.readAsArrayBuffer(file);
+}
+
+// Propwire → PropStream column map
+const PROPWIRE_MAP = {
+  'Living Square Feet':              'Building Sqft',
+  'Lot (Square Feet)':               'Lot Size Sqft',
+  'Units Count':                     'Units',
+  'Bedrooms':                        'Bedrooms',
+  'Bathrooms':                       'Total Bathrooms',
+  '# of Stories':                    'Number of Stories',
+  'Estimated Value':                 'Est. Value',
+  'Estimated Equity':                'Est. Equity',
+  'Estimated Equity Percent':        'Est. Loan-to-Value',
+  'Open Mortgage Balance':           'Loan 1 Balance',
+  'Recorded Mortgage Interest Rate': 'Loan 1 Rate',
+  'Mortgage Document Date':          'Loan 1 Date',
+  'Mortgage Loan Type':              'Loan 1 Type',
+  'Lender Name':                     'Loan 1 Lender',
+  'Owner Mailing Address':           'Mailing Address',
+  'Owner Mailing City':              'Mailing City',
+  'Owner Mailing State':             'Mailing State',
+  'Owner Mailing Zip':               'Mailing Zip',
+  'Assessed Total Value':            'Total Assessed Value',
+  'Last Sale Date':                  'Last Sale Date',
+  'Last Sale Amount':                'Last Sale Amount',
+  'Tax Amount':                      'Tax Amount',
+  'Owner Type':                      'Owner Type',
+  'Vacant?':                         'Vacant',
+  'Property Type':                   'Property Type',
+  'Property Use':                    'Property Use',
+  'Ownership Length (Months)':       'Ownership Length',
+  'County':                          'County',
+};
+
+function detectFormat(keys) {
+  // Propwire has "Living Square Feet" and "Estimated Value"
+  if (keys.includes('Living Square Feet') || keys.includes('Estimated Value')) return 'propwire';
+  // PropStream has "Building Sqft" and "Est. Value"
+  if (keys.includes('Building Sqft') || keys.includes('Est. Value')) return 'propstream';
+  return 'unknown';
+}
+
+function normalizePropwire(row) {
+  const out = {};
+  // Remap all Propwire keys to PropStream equivalents
+  for (const [pw, ps] of Object.entries(PROPWIRE_MAP)) {
+    if (row[pw] !== undefined && row[pw] !== '') out[ps] = row[pw];
+  }
+  // Keys that are identical in both
+  const passthroughs = ['Address','City','State','Zip','APN','Year Built',
+    'Owner 1 First Name','Owner 1 Last Name','Owner 2 First Name','Owner 2 Last Name',
+    'Owner 3 First Name','Owner 3 Last Name','Owner 4 First Name','Owner 4 Last Name',
+    'Subdivision','Legal Description'];
+  for (const k of passthroughs) {
+    if (row[k] !== undefined) out[k] = row[k];
+  }
+  // Derived: Total Open Loans — 1 if balance > 0
+  const bal = parseFloat(out['Loan 1 Balance']) || 0;
+  out['Total Open Loans'] = bal > 0 ? 1 : 0;
+  out['Est. Remaining balance of Open Loans'] = out['Loan 1 Balance'] || 0;
+  // LTV: Propwire gives equity%, convert to LTV%
+  const eqPct = parseFloat(row['Estimated Equity Percent']) || 0;
+  out['Est. Loan-to-Value'] = eqPct > 0 ? (100 - eqPct).toFixed(1) : 0;
+  // Source tag
+  out['_source'] = 'propwire';
+  return out;
+}
+
+function finishParse(wb) {
+  addLog(`📋 Sheets: ${wb.SheetNames.join(', ')}`);
+  const sheetName = wb.SheetNames.find(s => s.toLowerCase().includes('propert')) || wb.SheetNames[0];
+  addLog(`✓ Using: "${sheetName}"`);
+  setProgress(55, 'Reading rows…');
+
+  const ws = wb.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+  addLog(`📊 Rows found: ${rows.length}`);
+  if (!rows.length) throw new Error('Sheet appears empty');
+
+  setProgress(70, 'Detecting format…');
+  const keys = Object.keys(rows[0] || {});
+  const fmt = detectFormat(keys);
+  addLog(`🔍 Format detected: ${fmt === 'propwire' ? 'Propwire ✓' : fmt === 'propstream' ? 'PropStream ✓' : 'Generic (will try best-effort mapping)'}`);
+
+  setProgress(80, 'Normalizing columns…');
+
+  // Normalize all rows to PropStream schema
+  const normalized = rows.map(row => {
+    let out;
+    if (fmt === 'propwire') {
+      out = normalizePropwire(row);
+    } else {
+      // PropStream or generic — just fix address aliases
+      out = { ...row };
+      if (!out['Address'] && out['Property Address']) out['Address'] = out['Property Address'];
+      if (!out['Address'] && out['address']) out['Address'] = out['address'];
+    }
+    return out;
+  }).filter(r => r['Address'] || r['APN']);
+
+  addLog(`✓ Valid rows after filter: ${normalized.length}`);
+
+  const existingAddrs = new Set(props.map(p => (p.Address || '').toLowerCase().trim()));
+  const newRows = normalized.filter(r => !existingAddrs.has((r['Address'] || '').toLowerCase().trim()));
+  const dupCount = normalized.length - newRows.length;
+
+  setProgress(95, 'Ready!');
+  if (importMode === 'add') {
+    addLog(`➕ New properties: ${newRows.length}`, 'var(--green)');
+    if (dupCount) addLog(`⏭ Duplicates skipped: ${dupCount}`, 'var(--amber)');
+  } else {
+    addLog(`🔄 Will replace all ${props.length} with ${normalized.length}`, 'var(--amber)');
+  }
+  setProgress(100, 'Ready to import!');
+
+  pendingImportRows = normalized;
+
+  const toImport = importMode === 'add' ? newRows : normalized;
+  const cities = {};
+  toImport.forEach(r => { const c = r.City || r.city || 'Unknown'; cities[c] = (cities[c] || 0) + 1; });
+
+  const fmtLabel = fmt === 'propwire' ? 'Propwire' : fmt === 'propstream' ? 'PropStream' : 'Generic';
+
+  document.getElementById('import-result').style.display = 'block';
+  document.getElementById('import-result-title').textContent = importMode === 'add'
+    ? `✓ Ready to add ${newRows.length} new properties from ${fmtLabel}`
+    : `✓ Ready to replace with ${normalized.length} properties from ${fmtLabel}`;
+  document.getElementById('import-result-grid').innerHTML = [
+    [toImport.length, 'To import', 'var(--green)'],
+    [dupCount, 'Skipped dups', 'var(--amber)'],
+    [Object.keys(cities).length, 'Cities', 'var(--teal)'],
+  ].map(([v, l, c]) => `<div class="import-result-stat"><div class="import-result-num" style="color:${c};">${v}</div><div class="import-result-lbl">${l}</div></div>`).join('');
+  document.getElementById('import-result-detail').textContent = Object.entries(cities).map(([c, n]) => `${c}: ${n}`).join(' · ');
+  document.getElementById('import-confirm-btn').style.display = 'block';
+}
+
+function applyImport() {
+  if (!pendingImportRows) return;
+  const btn = document.getElementById('import-confirm-btn');
+  btn.textContent = 'Importing…';
+  btn.disabled = true;
+
+  const existingAddrs = new Set(props.map(p => (p.Address || '').toLowerCase().trim()));
+
+  if (importMode === 'replace') {
+    const newProps = pendingImportRows.map((row, i) => ({ ...row, _id: i, _stage: 'New Lead', _score: calcScore(row), _notes: '' }));
+    props.length = 0;
+    newProps.forEach(p => props.push(p));
+  } else {
+    const nextId = props.reduce((m, p) => Math.max(m, p._id), 0) + 1;
+    pendingImportRows
+      .filter(r => !existingAddrs.has((r['Address'] || '').toLowerCase().trim()))
+      .forEach((row, i) => props.push({ ...row, _id: nextId + i, _stage: 'New Lead', _score: calcScore(row), _notes: '' }));
+  }
+
+  filteredProps = [...props];
+  const total = props.length;
+  const badge = document.getElementById('prop-badge');
+  if (badge) badge.textContent = total;
+  const sfCount = document.getElementById('sf-count');
+  if (sfCount) sfCount.textContent = total + ' tracked properties';
+
+  addLog(`\n✅ Done! Total: ${total} properties.`, 'var(--green)');
+  btn.textContent = '✓ Imported!';
+  btn.style.background = 'var(--green)';
+
+  setTimeout(() => {
+    const active = document.querySelector('.section.active');
+    if (active) {
+      const id = active.id.replace('page-', '');
+      if (id === 'dashboard') renderDashboard();
+      else if (id === 'properties') { applyFilters(); }
+      else if (id === 'pipeline') renderPipeline();
+      else if (id === 'cashflow') renderCashflow();
+      else if (id === 'contacts') renderContacts();
+    }
+    renderDashboard();
+    setTimeout(closeImportModal, 1000);
+  }, 300);
+}
+
+
 checkMobileLayout();
 
 // Init
